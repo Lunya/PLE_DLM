@@ -3,7 +3,7 @@
   <groupId>bigdata</groupId>
   <artifactId>PLE_DLM</artifactId>
   <version>0.0.1</version>
-  <name>TPSpark</name>
+  <name>PLE_DLM</name>
   
   
   <dependencies>
@@ -24,7 +24,7 @@
                 <target>1.8</target>
   				<archive>
   					<manifest>
-  						<mainClass>bigdata.StatsSpark</mainClass>
+  						<mainClass>bigdata.PointsAggregation</mainClass>
   					</manifest>
   				</archive>
   			</configuration>
