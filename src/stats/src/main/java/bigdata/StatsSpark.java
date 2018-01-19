@@ -1,10 +1,9 @@
 package bigdata;
 
 import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaDoubleRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.util.StatCounter;
 
 import scala.Tuple2;
@@ -42,19 +41,50 @@ public class StatsSpark {
 			return new Tuple3<Double, Double, Integer>(latitude, longitude, height); 
 		});
 		
-		StatCounter sc = rdd2.mapToDouble(t -> t._3()).stats();
+		JavaDoubleRDD heights = rdd2.mapToDouble(t -> t._3()).cache();
+		long startTime, endTime;
 		
-		double bucket[] = {0, 1, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000};
+		// calcul des stats sur toutes les hauteurs
+		startTime = System.currentTimeMillis();
+		StatCounter statHeights = heights.stats();
+		endTime = System.currentTimeMillis();
+		System.out.println(statHeights.toString());
+		System.out.println(((endTime - startTime)/1000) + " secondes");
 		
-		long[] histogram = rdd2.mapToDouble(t -> t._3()).histogram(bucket);
-		for (int i = 0; i < Math.min(bucket.length, histogram.length); i++) {
-			System.out.print(bucket[i]);
-			System.out.print("  :  ");
-			System.out.println(histogram[i]);
+		// calcul des stats sur 1% des hauteurs
+		endTime = System.currentTimeMillis();
+		StatCounter stat1percentHeights = heights.sample(false,  0.01).stats();
+		endTime = System.currentTimeMillis();
+		System.out.println(stat1percentHeights.toString());
+		System.out.println(((endTime - startTime)/1000) + " secondes");
+		
+		//double buckets[] = {0, 1, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000};
+		int bucketCount = 100;
+		double bucketMax = 8000;
+		double buckets[] = new double[bucketCount];
+		for (int i = 0; i < bucketCount; i++)
+			buckets[i] = (double)i * (bucketMax / (double)bucketCount);
+		// calculer l'histogramme d'après des valeurs pré-calculées
+		startTime = System.currentTimeMillis();
+		long[] histogram = heights.histogram(buckets);
+		endTime = System.currentTimeMillis();
+		System.out.println("Histogramme d'après valeurs");
+		System.out.println(((endTime - startTime)/1000) + " secondes");
+		for (int i = 0; i < Math.min(buckets.length, histogram.length); i++) {
+			System.out.println(buckets[i] + "  :  " + histogram[i]);
+		}
+		
+		// calculer l'histogramme automatiquement
+		startTime = System.currentTimeMillis();
+		Tuple2<double[], long[]> histogram2 = heights.histogram(bucketCount);
+		endTime = System.currentTimeMillis();
+		System.out.println("Histogramme d'après nombre");
+		System.out.println(((endTime - startTime)/1000) + " secondes");
+		for (int i = 0; i < Math.min(histogram2._1.length, histogram2._2.length); i++) {
+			System.out.println(histogram2._1[i] + "  :  " + histogram2._2[i]);
 		}
 		
 		System.out.println("Stats en vue :");
-		System.out.println(sc.toString());
 		System.out.println("Nombre de partitions : " + Integer.toString(rddDEM3File.getNumPartitions()));
 		System.out.println("Au revoir");
 	}
