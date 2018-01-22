@@ -43,6 +43,9 @@ public class PointsAggregation {
 			return new Tuple3<Double, Double, Integer>(latitude, longitude, height); 
 		});
 		
+		/*
+		
+		*/
 		int zoom = 0;
 		double latSeparator = (1 * Math.pow(2, zoom));
 		double lonSeparator = (2 * Math.pow(2, zoom));
@@ -69,6 +72,9 @@ public class PointsAggregation {
 			latKey -=90;
 			lonKey -=180;
 			
+			//Todo :
+			// Il faut obtenir les coordonnées x et y du pixel de la région locale à ce point.
+			
 			//int xKey = (t._1 - latKey) * latStep/256
 			//int yKey = (t._2 - lonKey) * lonStep/256
 			
@@ -76,9 +82,29 @@ public class PointsAggregation {
 			return key;
 		});
 		
-		for (Tuple2<String, Iterable<Tuple3<Double, Double, Integer>>>e : rddImages.take(100)) {
-			System.out.println(e._1());
+		/*
+		for (Tuple2<String, Iterable<Tuple3<Double, Double, Integer>>> e : rddImages.cache().take(100)) {
+			System.out.println(e.toString());
 		}
+		*/
+		
+		//Todo : Il faut réduire l'Iterable de points à un seul Point (surtout : une altitude)
+		
+		//Todo : On a donc ensuite pour chaque pixel un seul point, il faut ensuite agréger tous les points d'une même région à une même information
+		
+		/*
+		JavaPairRDD<String, Tuple3<Double, Double, Integer>> rddImagesAggregated = rddImages.mapValues((key, t) -> {
+			int max = 0;
+			Tuple3<Double, Double, Integer> maxElem;
+			for (Tuple3<Double, Double, Integer> point : t) {
+				if (max < point._3()) {
+					max = point._3();
+					maxElem = maxElem;
+				}
+			}
+			return maxElem;
+		});
+		*/
 		
 		//JavaDoubleRDD heights = rddDEM3.mapToDouble(t -> t._3()).cache();
 		
