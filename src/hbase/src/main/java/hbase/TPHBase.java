@@ -7,12 +7,14 @@
  * A exécuter avec la commande ./hadoop jar NOMDUFICHER.jar ARGUMENTS....
  */
 package hbase;
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.commons.beanutils.converters.BigIntegerConverter;
 import org.apache.commons.beanutils.converters.ByteArrayConverter;
 import org.apache.commons.beanutils.converters.ByteConverter;
+import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -38,7 +40,7 @@ public class TPHBase {
 		
 		private static final byte[] LATITUDE_COL = Bytes.toBytes("la");
 		private static final byte[] LONGITUDE_COL = Bytes.toBytes("lo");
-		private static final byte[] ZOOM_COL = Bytes.toBytes("lo");
+		private static final byte[] ZOOM_COL = Bytes.toBytes("z");
 		private static final byte[] HEIGHT_COL = Bytes.toBytes("h");
 
 		public static void createOrOverwrite(Admin admin, HTableDescriptor table) throws IOException {
@@ -75,8 +77,10 @@ public class TPHBase {
 			row.addColumn(HEIGHT_FAMILY, ZOOM_COL, Bytes.toBytes(3));
 			int imgSize = 256;
 			ByteBuffer bb = ByteBuffer.allocate(2 * imgSize * imgSize);
-			for (int x = 0; x > imgSize*imgSize; x++)
-				bb.putShort((short)(x*256));
+			for (int x = 0; x < imgSize*imgSize; x++) {
+				bb.putShort((short)(x - 0xFFFF));
+			}
+			FileUtils.writeByteArrayToFile(new File("binfile"), bb.array());
 			row.addColumn(HEIGHT_FAMILY, HEIGHT_COL, bb.array());
 			table.put(row);
 			return 0;
