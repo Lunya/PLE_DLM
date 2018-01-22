@@ -9,6 +9,8 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
+		"body-parser": "^1.18.2",
+		"client-ajax": "^0.1.6",
 		"express": "^4.16.2",
 		"hbase": "^0.3.0",
 		"node-twig": "^1.1.0"
