@@ -34,4 +34,7 @@ user	0m16,196s
 sys	0m2,436s
 ```
 
+# Fonctionnement de HBase
 
+https://goranzugic.wordpress.com/2016/04/11/hbase-schema/
+http://www.informit.com/articles/article.aspx?p=2253412
