@@ -88,9 +88,32 @@ public class PointsAggregation {
 		}
 		*/
 		
+		//Done : Lire le fichier texte de 220 GO
+		//Clé : NULL
+		//Valeur : Ligne du fichier
+		
+		//Done : Obtenir les points à partir de ces lignes
+		//Clé : NULL
+		//Valeur : Lat / Long / Alt
+		
+		//Done : Regrouper les points appartenant à la même région et au même pixel.
+		//Clé : Lat/Long (Region) + X/Y (Pixel Local).
+		//Valeur : Iterable (Lat / Long / Alt)
+		
 		//Todo : Il faut réduire l'Iterable de points à un seul Point (surtout : une altitude)
+		//Clé : Lat/Long (Region) + X/Y (Pixel Local).
+		//Valeur : Lat Long Altitude
+		
+		//Todo : Il faut réduire l'Iterable de points à un seul Point (surtout : une altitude)
+		//Clé : Lat/Long (Region).
+		//Valeur : Iterable X/Y (Pixel) Altitude
+		
 		
 		//Todo : On a donc ensuite pour chaque pixel un seul point, il faut ensuite agréger tous les points d'une même région à une même information
+		//Clé : Lat/Long (Region)
+		//Valeur : Matrice d'altitude (256*256)
+		
+		//Todo : Insertion dans hBase en convertissant la matrice en une autre structure de donnée.
 		
 		/*
 		JavaPairRDD<String, Tuple3<Double, Double, Integer>> rddImagesAggregated = rddImages.mapValues((key, t) -> {
