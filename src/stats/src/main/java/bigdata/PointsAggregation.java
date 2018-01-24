@@ -1,5 +1,6 @@
 package bigdata;
 
+import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
 import org.apache.spark.SparkConf;
@@ -20,9 +21,16 @@ public class PointsAggregation {
 	public static void main(String[] args) {
 		SparkConf conf = new SparkConf().setAppName("Aggregation PLE_DLM");
 		JavaSparkContext context = new JavaSparkContext(conf);
+		
+		//Done : Lire le fichier texte de 220 GO
+		//Clé : NULL
+		//Valeur : Ligne du fichier
 		JavaRDD<String> rddDEM3File;
 		rddDEM3File = context.textFile(dem3Path);
 		
+		//Done : Obtenir les points à partir de ces lignes
+		//Clé : NULL
+		//Valeur : Lat / Long / Alt
 		JavaRDD<Tuple3<Double, Double, Integer> > rddDEM3 = rddDEM3File.map((s) -> {
 			String[] split = s.toString().split(",");
 			Double latitude = 0.0;
@@ -53,7 +61,9 @@ public class PointsAggregation {
 		double latStep = 180/latSeparator;
 		double lonStep = 360/lonSeparator;
 		
-		
+		//Doing : Regrouper les points appartenant à la même région et au même pixel.
+		//Clé : Lat/Long (Region) + X/Y (Pixel Local).
+		//Valeur : Iterable (Lat / Long / Alt)
 		JavaPairRDD<String, Iterable<Tuple3<Double, Double, Integer> > > rddImages = rddDEM3.groupBy((t) -> {
 			double latitude = t._1();
 			double longitude = t._2();
@@ -66,68 +76,85 @@ public class PointsAggregation {
 			
 			int latKey = (int) Math.floor(latitude);
 			int lonKey = (int) Math.floor(longitude);
-			int xKey = 0;
-			int yKey = 0;
+			int xKey =  (int) Math.floor((t._1() - latKey) * (latStep/256.0));
+			int yKey = (int) Math.floor((t._2() - lonKey) * (lonStep/256.0));
 			
 			latKey -=90;
 			lonKey -=180;
-			
-			//Todo :
-			// Il faut obtenir les coordonnées x et y du pixel de la région locale à ce point.
-			
-			//int xKey = (t._1 - latKey) * latStep/256
-			//int yKey = (t._2 - lonKey) * lonStep/256
 			
 			String key = Integer.toString(latKey) + "#" + Integer.toString(lonKey) + "#" + Integer.toString(xKey) + "#" + Integer.toString(yKey);
 			return key;
 		});
 		
 		/*
-		for (Tuple2<String, Iterable<Tuple3<Double, Double, Integer>>> e : rddImages.cache().take(100)) {
+		for (Tuple2<String, Iterable<Tuple3<Double, Double, Integer>>> e : rddImages.cache().take(1)) {
 			System.out.println(e.toString());
 		}
 		*/
 		
-		//Done : Lire le fichier texte de 220 GO
-		//Clé : NULL
-		//Valeur : Ligne du fichier
-		
-		//Done : Obtenir les points à partir de ces lignes
-		//Clé : NULL
-		//Valeur : Lat / Long / Alt
-		
-		//Done : Regrouper les points appartenant à la même région et au même pixel.
-		//Clé : Lat/Long (Region) + X/Y (Pixel Local).
-		//Valeur : Iterable (Lat / Long / Alt)
-		
-		//Todo : Il faut réduire l'Iterable de points à un seul Point (surtout : une altitude)
+		//Done : Il faut réduire l'Iterable de points à un seul Point (surtout : une altitude)
 		//Clé : Lat/Long (Region) + X/Y (Pixel Local).
 		//Valeur : Lat Long Altitude
-		
-		//Todo : Il faut réduire l'Iterable de points à un seul Point (surtout : une altitude)
-		//Clé : Lat/Long (Region).
-		//Valeur : Iterable X/Y (Pixel) Altitude
-		
-		
-		//Todo : On a donc ensuite pour chaque pixel un seul point, il faut ensuite agréger tous les points d'une même région à une même information
-		//Clé : Lat/Long (Region)
-		//Valeur : Matrice d'altitude (256*256)
-		
-		//Todo : Insertion dans hBase en convertissant la matrice en une autre structure de donnée.
-		
-		/*
-		JavaPairRDD<String, Tuple3<Double, Double, Integer>> rddImagesAggregated = rddImages.mapValues((key, t) -> {
+		JavaPairRDD<String, Tuple3<Double, Double, Integer>> rddImagesAggregated = rddImages.mapValues((t) -> {
 			int max = 0;
-			Tuple3<Double, Double, Integer> maxElem;
+			Tuple3<Double, Double, Integer> maxElem = null;
 			for (Tuple3<Double, Double, Integer> point : t) {
 				if (max < point._3()) {
 					max = point._3();
-					maxElem = maxElem;
+					maxElem = point;
 				}
 			}
 			return maxElem;
 		});
-		*/
+		
+		//Done : On transforme le type de point en changeant le type de clé.
+		//Clé : Lat/Long (Region).
+		//Valeur : X/Y (Pixel) Altitude
+		
+		
+		JavaPairRDD<String, Tuple3<Integer, Integer, Integer>> rddImagesTrans = rddImagesAggregated.mapToPair((t) -> {
+			String split[] = t._1().split("#");
+			String key = split[0] + "#" + split[1];
+			Tuple3<Integer, Integer, Integer> val;// = t._2;
+			int x = Integer.parseInt(split[2]); // Split de la Key
+			int y = Integer.parseInt(split[3]); // Split de la Key
+			int alt = t._2()._3();//Trois
+			val = new Tuple3<Integer, Integer, Integer>(x, y, alt);
+			return new Tuple2<String, Tuple3<Integer, Integer, Integer>>(key, val);
+		});
+		
+		//Done : On regroupe les pixels en un iterable.
+		//Clé : Lat/Long (Region).
+		//Valeur : Iterable X/Y (Pixel) Altitude
+		JavaPairRDD<String, Iterable<Tuple3<Integer, Integer, Integer>>> rddImagesRegionUnited = rddImagesTrans.groupByKey();
+		
+		//Todo : On a donc ensuite pour chaque pixel un seul point, il faut ensuite agréger tous les points d'une même région à une même information
+		//Clé : Lat/Long (Region)
+		//Valeur : Matrice d'altitude (256*256)
+		JavaPairRDD<String, byte[]> rddImagesRegionMatrixed = rddImagesRegionUnited.mapValues((t) -> {
+			final int imageSize = 256;
+			ByteBuffer res = ByteBuffer.allocateDirect(2 * imageSize * imageSize);
+			for (Tuple3<Integer, Integer, Integer> point : t) {
+				int x = point._1();
+				int y = point._2();
+				int alt = point._3();
+				res.putShort(2*(x*imageSize + y), (short)(alt-Short.MAX_VALUE));
+			}
+			return res.array();
+		});
+		
+		//rddImagesRegionMatrixed.saveAsNewAPIHadoopDataset(conf);
+		rddImagesRegionMatrixed.saveAsTextFile("/user/dimprestat/test1");
+		
+		
+		
+		//Todo : Insertion dans hBase en convertissant la matrice en une autre structure de donnée.
+		
+		//rddImages.aggregateByKey(zeroValue, seqFunc, combFunc)
+		
+		
+		
+		
 		
 		//JavaDoubleRDD heights = rddDEM3.mapToDouble(t -> t._3()).cache();
 		
