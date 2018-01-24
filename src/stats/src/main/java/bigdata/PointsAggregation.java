@@ -16,7 +16,7 @@ import scala.Tuple3;
 
 public class PointsAggregation {
 
-	private static final String dem3Path = "/raw_data/dem3_lat_lng.txt";
+	private static final String dem3Path = "/user/lsannic/dem3_lat_lng.min.txt";
 	
 	public static void main(String[] args) {
 		SparkConf conf = new SparkConf().setAppName("Aggregation PLE_DLM");
@@ -74,23 +74,19 @@ public class PointsAggregation {
 			latitude = latitude/latStep;
 			longitude = longitude/lonStep;
 			
-			int latKey = (int) Math.floor(latitude);
-			int lonKey = (int) Math.floor(longitude);
+			double latKey = Math.floor(latitude);
+			double lonKey = Math.floor(longitude);
 			int xKey =  (int) Math.floor((t._1() - latKey) * (latStep/256.0));
 			int yKey = (int) Math.floor((t._2() - lonKey) * (lonStep/256.0));
 			
 			latKey -=90;
 			lonKey -=180;
 			
-			String key = Integer.toString(latKey) + "#" + Integer.toString(lonKey) + "#" + Integer.toString(xKey) + "#" + Integer.toString(yKey);
+			String key = Double.toString(latKey) + "#" + Double.toString(lonKey) + "#" + Integer.toString(xKey) + "#" + Integer.toString(yKey);
 			return key;
 		});
 		
-		/*
-		for (Tuple2<String, Iterable<Tuple3<Double, Double, Integer>>> e : rddImages.cache().take(1)) {
-			System.out.println(e.toString());
-		}
-		*/
+		rddImages.saveAsTextFile("/user/dimprestat/test_alpha_3");
 		
 		//Done : Il faut réduire l'Iterable de points à un seul Point (surtout : une altitude)
 		//Clé : Lat/Long (Region) + X/Y (Pixel Local).
@@ -107,6 +103,7 @@ public class PointsAggregation {
 			return maxElem;
 		});
 		
+		rddImagesAggregated.saveAsTextFile("/user/dimprestat/test_beta_3");
 		//Done : On transforme le type de point en changeant le type de clé.
 		//Clé : Lat/Long (Region).
 		//Valeur : X/Y (Pixel) Altitude
@@ -133,18 +130,23 @@ public class PointsAggregation {
 		//Valeur : Matrice d'altitude (256*256)
 		JavaPairRDD<String, byte[]> rddImagesRegionMatrixed = rddImagesRegionUnited.mapValues((t) -> {
 			final int imageSize = 256;
-			ByteBuffer res = ByteBuffer.allocateDirect(2 * imageSize * imageSize);
+			//ByteBuffer res = ByteBuffer.allocateDirect(2 * imageSize * imageSize);
+			byte res[] = new byte[2 * imageSize * imageSize];
 			for (Tuple3<Integer, Integer, Integer> point : t) {
 				int x = point._1();
 				int y = point._2();
 				int alt = point._3();
-				res.putShort(2*(x*imageSize + y), (short)(alt-Short.MAX_VALUE));
+				//res.putShort(2*(x*imageSize + y), (short)(alt-Short.MAX_VALUE));
+				short val = (short)(alt-Short.MAX_VALUE);
+				int pos = 2*(x*imageSize + y);
+				res[pos] = (byte)(val & 0xFF);
+				res[pos+1] = (byte)((val >> 8) & 0xFF);
 			}
-			return res.array();
+			return res;
 		});
 		
 		//rddImagesRegionMatrixed.saveAsNewAPIHadoopDataset(conf);
-		rddImagesRegionMatrixed.saveAsTextFile("/user/dimprestat/test1");
+		rddImagesRegionMatrixed.saveAsTextFile("/user/dimprestat/test_gamma_3");
 		
 		
 		
