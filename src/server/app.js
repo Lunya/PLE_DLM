@@ -4,7 +4,9 @@ const http = require('http');
 const path = require('path');
 const bodyParser = require('body-parser');
 let createEngine = require('node-twig').createEngine;
-const hbase = require('hbase');
+//const hbase = require('hbase');
+const HBase = require('hbase-client');
+const hbase = require('hbase-rpc-client');
 
 process.env.SERVER_PORT = 4200;
 
@@ -17,8 +19,40 @@ app.set('views', './views');
 app.set('view engine', 'twig');
 app.use(bodyParser.json());
 
+
+let client = hbase({
+	zookeeperHosts: [ 'beetlejuice:2181' ],
+	zookeeperRoot: '/hbase',
+	//zookeeperReconnectTimeout: 20000,
+	//rootRegionZKPath: '/hbase',
+	rpcTimeout: 30000,
+	//callTimeout: 5000,
+	//tcpNoDelay: false,
+	//tcpKeepAlive: true
+});
+client.on('error', (err) => console.log("ERROR: ",  err));
+let get = new hbase.Get('r1');
+client.get('DLM', get, (err, res) => {
+	console.log("Error: ", err, "  Result: ", res);
+});
+/*let client = HBase.create({
+	zookeeperHosts: [
+		'localhost:2181'
+	],
+	zookeeperRoot: '/hbase'
+});
+client.getRow('DLM', 'r1', (error, row) => {
+	console.log("error:", error, "row:", row);
+});
+let table = hbase({ host: 'localhost', port: 2181 })
+	.table('DLM');
+let row = table.row('r1');
+let rows = table.row('r*');
+row.get('h', (error, value) => {
+	console.log("error:", error, "value:", value);
+});*/
 app.get('/hbase', (req, res) => {
-	let table = hbase({ host: 'localhost', port: 2181/*, port: 16010 */})
+	/*let table = hbase({ host: 'localhost', port: 16010 })
 		.table('DLM');
 	let row = table.row('r1');
 	let rows = table.row('r*');
@@ -26,7 +60,7 @@ app.get('/hbase', (req, res) => {
 		console.log(error, value);
 		res.contentType('text/html');
 		res.send(error.body);
-	});
+	});*/
 });
 
 app.get('/test', (req, res) => {

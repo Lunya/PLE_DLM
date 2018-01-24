@@ -13,6 +13,8 @@
 		"client-ajax": "^0.1.6",
 		"express": "^4.16.2",
 		"hbase": "^0.3.0",
+		"hbase-client": "^1.6.1",
+		"hbase-rpc-client": "^0.1.14",
 		"node-twig": "^1.1.0"
 	}
 }
