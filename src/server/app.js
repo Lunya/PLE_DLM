@@ -4,8 +4,6 @@ const http = require('http');
 const path = require('path');
 const bodyParser = require('body-parser');
 let createEngine = require('node-twig').createEngine;
-//const hbase = require('hbase');
-const HBase = require('hbase-client');
 const hbase = require('hbase-rpc-client');
 
 process.env.SERVER_PORT = 4200;
@@ -31,36 +29,80 @@ let client = hbase({
 	//tcpKeepAlive: true
 });
 client.on('error', (err) => console.log("ERROR: ",  err));
-let get = new hbase.Get('r1');
+/*let get = new hbase.Get('r1');
 client.get('DLM', get, (err, res) => {
 	console.log("Error: ", err, "  Result: ", res);
-});
-/*let client = HBase.create({
-	zookeeperHosts: [
-		'localhost:2181'
-	],
-	zookeeperRoot: '/hbase'
-});
-client.getRow('DLM', 'r1', (error, row) => {
-	console.log("error:", error, "row:", row);
-});
-let table = hbase({ host: 'localhost', port: 2181 })
-	.table('DLM');
-let row = table.row('r1');
-let rows = table.row('r*');
-row.get('h', (error, value) => {
-	console.log("error:", error, "value:", value);
 });*/
-app.get('/hbase', (req, res) => {
-	/*let table = hbase({ host: 'localhost', port: 16010 })
-		.table('DLM');
-	let row = table.row('r1');
-	let rows = table.row('r*');
-	row.get('h', (error, value) => {
-		console.log(error, value);
-		res.contentType('text/html');
-		res.send(error.body);
-	});*/
+let scan = client.getScanner('dlm');
+let filter = {
+	singleColumnValueFilter: {
+		columnFamily: 'h',
+		columnQualifier: 'la',
+		compareOp: 'EQUAL',
+		comparator: {
+			regexStringComparator: {
+				pattern: '.*',
+				patternFlags: '',
+				charset: 'UTF-8'
+			}
+		},
+		filterIfMissing: true,
+		latestVersionOnly: true
+	}
+};
+let filterList = new hbase.FilterList();
+filterList.addFilter(filter);
+scan.setFilter(filterList);
+scan.toArray((err, res) => {
+	console.log('err: ', err, '  res: ', res);
+});
+
+app.get('/viewer', (req, res) => {
+	res.status(200).render('viewer', {
+		context: {}
+	});
+});
+app.get('/hbase/list', (req, res) => {
+	res.contentType('application/json');
+	let scan = client.getScanner('DLM');
+	let filter = {
+		singleColumnValueFilter: {
+			columnFamily: 'h',
+			columnQualifier: 'la',
+			compareOp: '',
+			comparator: {
+				substringComparator: {
+					substr: 'value1'
+				}
+			},
+			filterIfMissing: true,
+			latestVesrionOnly: true
+		}
+	};
+	let filterList = new hbase.FilterList();
+	filterList.addFilter(filter);
+	scan.setFilter(filterList);
+	scan.toArray((error, result) => console.log('Error: ', error, '  Result: ', result));
+});
+app.get('/hbase/:lat/:lng/:level', (req, res) => {
+	let get = new hbase.Get('r' + req.params.level);
+	get.addColumns('h', 'h');
+	get.addColumns('h', 'la');
+	get.addColumns('h', 'lo');
+	get.addColumns('h', 'h');
+	client.get('DLM', get, (error, result) => {
+
+	});
+	const imageSize = 256;
+	const imageTypeSize = 2;
+	let imgArray = new Uint16Array(imageSize * imageSize);
+
+	for (let y = 0; y < imageSize; y++) {
+		for (let x = 0; x < imageSize; x++) {
+			imgArray[y * imageSize + x] = y * imageSize + x;
+		}
+	}
+	res.status(200).end(new Buffer(imgArray.buffer), 'binary');
 });
 
 app.get('/test', (req, res) => {
