@@ -38,3 +38,9 @@ sys	0m2,436s
 
 https://goranzugic.wordpress.com/2016/04/11/hbase-schema/
 http://www.informit.com/articles/article.aspx?p=2253412
+
+# Chargement des librairies au lancement de Spark
+
+```
+spark-submit --jars $(find /home/hadoop/cluster2017/hbase/lib/ -name "*.jar" | tr '\n' ',')  --master yarn --deploy-mode cluster --executor-memory 7G --num-executors 50 ~/espaces/travail/master2/semestre9/ple/PLE_DLM/src/spark_maven/target/TPSpark-0.0.1.jar
+```
