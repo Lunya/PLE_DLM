@@ -62,27 +62,42 @@ app.get('/viewer', (req, res) => {
 		context: {}
 	});
 });
+function bytearrayToInt16(bytearray) {
+	return Uint16Array.from(bytearray)[0];
+}
 app.get('/hbase/list', (req, res) => {
 	res.contentType('application/json');
-	let scan = client.getScanner('DLM');
+	console.log('We want a list');
+	let scan = client.getScanner('dlm');
 	let filter = {
 		singleColumnValueFilter: {
 			columnFamily: 'h',
 			columnQualifier: 'la',
-			compareOp: '',
+			compareOp: 'EQUAL',
 			comparator: {
-				substringComparator: {
-					substr: 'value1'
+				regexStringComparator: {
+					pattern: '.*',
+					patternFlags: '',
+					charset: 'UTF-8'
 				}
 			},
 			filterIfMissing: true,
-			latestVesrionOnly: true
+			latestVersionOnly: true
 		}
 	};
 	let filterList = new hbase.FilterList();
 	filterList.addFilter(filter);
 	scan.setFilter(filterList);
-	scan.toArray((error, result) => console.log('Error: ', error, '  Result: ', result));
+	scan.toArray((error, result) => {
+		console.log('We get the list');
+		console.log('h:la ', result[0]['cols']['h:la']);
+		console.log('column 1 ', result[0].columns[1]);
+		const mappedRes = result.map(e => {
+			return { 'row': e.row, 'h:la': bytearrayToInt16(e.cols['h:la'].value), 'h:lo': bytearrayToInt16(e.cols['h:lo'].value) };
+		});
+		console.log('The list: ', mappedRes);
+		res.status(200).send(mappedRes);
+	});
 });
 app.get('/hbase/:lat/:lng/:level', (req, res) => {
 	let get = new hbase.Get('r' + req.params.level);

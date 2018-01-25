@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>Page de test</title>
+	</head>
+	<body>
+		<form>
+			<button type="button" id="dumpDatabase">Dump database</button>
+		</form>
+	</body>
+	<ul id="databaseList">
+	</ul>
+
+	<script type="text/javascript" src="/ajax.js"></script>
+	<script type="text/javascript">
+	let dumpDatabase = document.querySelector('#dumpDatabase');
+	let databaseList = document.querySelector('#databaseList');
+
+	dumpDatabase.addEventListener('click', function(e) {
+		ajax.get('/hbase/list').then(function(body) {
+			databaseList.innerHTML = '';
+			body.forEach(e => {
+				let li = document.createElement('li');
+				li.innerHTML = '<b>Row: </b>' + e['h:row'] + ' <i>latitude: </i>' + e['h:la'] + ' <i>longitude: </i>' + e['h:lo'];
+				databaseList.appendChild(li);
+			});
+			console.log(body);
+		}, function (err) {
+			console.log(err);
+		});
+	});
+	</script>
+</html>
