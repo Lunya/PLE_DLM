@@ -62,8 +62,18 @@ app.get('/viewer', (req, res) => {
 		context: {}
 	});
 });
+function bytearrayToString(bytearray) {
+	const intArray = Uint8Array.from(bytearray);
+	let str = '';
+	for (let i = 0; i < intArray.length; ++i)
+		str += String.fromCharCode(intArray[i]);
+	return str;
+}
 function bytearrayToInt16(bytearray) {
 	return Uint16Array.from(bytearray)[0];
+}
+function bytearrayToFloat32(bytearray) {
+	return Float32Array.from(bytearray)[0];
 }
 app.get('/hbase/list', (req, res) => {
 	res.contentType('application/json');
@@ -93,19 +103,31 @@ app.get('/hbase/list', (req, res) => {
 		console.log('h:la ', result[0]['cols']['h:la']);
 		console.log('column 1 ', result[0].columns[1]);
 		const mappedRes = result.map(e => {
-			return { 'row': e.row, 'h:la': bytearrayToInt16(e.cols['h:la'].value), 'h:lo': bytearrayToInt16(e.cols['h:lo'].value) };
+			return { 'row': bytearrayToString(e.row), 'h:la': bytearrayToFloat32(e.cols['h:la'].value), 'h:lo': bytearrayToFloat32(e.cols['h:lo'].value) };
 		});
 		console.log('The list: ', mappedRes);
 		res.status(200).send(mappedRes);
 	});
 });
+app.get('/hbase/:row', (req, res) => {
+	let get = new hbase.Get(req.params.row);
+	get.addColumn('h', 'h');
+	client.get('dlm', get, (error, result) => {
+		const imageSize = 256;
+		const imageTypeSize = 2;
+		let imgArray = new Uint16Array(imageSize * imageSize);
+		console.log(result.cols['h:h'].value);
+		//res.status(200).end(new Buffer(imgArray.buffer), 'binary');
+		res.status(200).end(result.cols['h:h'].value, 'binary');
+	});
+});
 app.get('/hbase/:lat/:lng/:level', (req, res) => {
 	let get = new hbase.Get('r' + req.params.level);
-	get.addColumns('h', 'h');
-	get.addColumns('h', 'la');
-	get.addColumns('h', 'lo');
-	get.addColumns('h', 'h');
-	client.get('DLM', get, (error, result) => {
+	get.addColumn('h', 'h');
+	get.addColumn('h', 'la');
+	get.addColumn('h', 'lo');
+	get.addColumn('h', 'h');
+	client.get('dlm', get, (error, result) => {
 
 	});
 	const imageSize = 256;

@@ -9,8 +9,8 @@
 			<button type="button" id="dumpDatabase">Dump database</button>
 		</form>
 	</body>
-	<ul id="databaseList">
-	</ul>
+	<ul id="databaseList"></ul>
+	<img id="preview"></img>
 
 	<script type="text/javascript" src="/ajax.js"></script>
 	<script type="text/javascript">
@@ -22,13 +22,46 @@
 			databaseList.innerHTML = '';
 			body.forEach(e => {
 				let li = document.createElement('li');
-				li.innerHTML = '<b>Row: </b>' + e['h:row'] + ' <i>latitude: </i>' + e['h:la'] + ' <i>longitude: </i>' + e['h:lo'];
+				li.innerHTML = '<b>Row: </b><span>' + e['row'] + '</span> <i>latitude: </i>' + e['h:la'] + ' <i>longitude: </i>' + e['h:lo'];
 				databaseList.appendChild(li);
 			});
 			console.log(body);
 		}, function (err) {
 			console.log(err);
 		});
+	});
+	databaseList.addEventListener('click', function(e) {
+		if (e.target.nodeName == 'SPAN') {
+			const row = e.target.innerHTML;
+			// build image
+			//data, size, position
+			ajax({url: '/hbase/' + row, method: 'get', type: 'arraybuffer'})
+				.then(function(rawData) {
+					const d = new Uint16Array(rawData);
+					let size = { x: 256, y: 256 };
+					let canvas = document.createElement('canvas');
+					let ctx = canvas.getContext('2d');
+					canvas.width = size.x;
+					canvas.height = size.y;
+					let id = ctx.createImageData(size.x, size.y);
+					let data = id.data;
+					for (let i = 0, size = d.length; i < size; i++) {
+						let I = i * 4;
+						data[I] = (d[i] / 2000) * 255;
+						data[I+1] = (d[i] / 4000) * 255;
+						data[I+2] = (d[i] / 8000) * 255;
+						data[I+3] = 255;
+					}
+					ctx.putImageData(id, 0, 0);36
+					/*ctx.font = '22px monospace';
+					ctx.fillStyle = '#ff0';
+					ctx.strokeStyle = '#f0f';
+					const text = `${this.position.x}E;${this.position.y}N`;
+					ctx.fillText(text, 20, 42);
+					ctx.strokeText(text, 20, 42);*/
+					document.querySelector('#preview').src = canvas.toDataURL('image/png');
+				});
+		}
 	});
 	</script>
 </html>
