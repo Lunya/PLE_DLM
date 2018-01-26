@@ -13,6 +13,7 @@
 	<img id="preview"></img>
 
 	<script type="text/javascript" src="/ajax.js"></script>
+	<script type="text/javascript" src="/colorGradient.js"></script>
 	<script type="text/javascript">
 	let dumpDatabase = document.querySelector('#dumpDatabase');
 	let databaseList = document.querySelector('#databaseList');
@@ -45,11 +46,18 @@
 					canvas.height = size.y;
 					let id = ctx.createImageData(size.x, size.y);
 					let data = id.data;
+					let gradient = new ColorGradient();
+					gradient.createRainbow();
+					console.log(gradient);
 					for (let i = 0, size = d.length; i < size; i++) {
 						let I = i * 4;
-						data[I] = (d[i] / 2000) * 255;
+						const color = gradient.getColorAtValue((d[i] + 7999)/16000);
+						/*data[I] = (d[i] / 2000) * 255;
 						data[I+1] = (d[i] / 4000) * 255;
-						data[I+2] = (d[i] / 8000) * 255;
+						data[I+2] = (d[i] / 8000) * 255;*/
+						data[I] = color.r * 255;
+						data[I+1] = color.g * 255;
+						data[I+2] = color.b * 255;
 						data[I+3] = 255;
 					}
 					ctx.putImageData(id, 0, 0);36
