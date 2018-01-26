@@ -115,7 +115,7 @@ public class TPHBase {
 				for (int y = 0; y < imageSize; ++y)
 					for (int x = 0; x < imageSize; ++x) {
 						int value = y * imageSize + x;
-						value = (int)(rand.nextDouble() * 8000.0);
+						value = Math.getExponent(rand.nextDouble() * 9.0); // random number between 0 and 8000
 						bb.putShort((short)(value - Short.MAX_VALUE));
 					}
 				row.addColumn(HEIGHT_FAMILY, HEIGHT_COL, bb.array());
