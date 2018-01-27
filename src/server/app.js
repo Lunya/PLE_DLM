@@ -142,6 +142,10 @@ app.get('/hbase/:lat/:lng/:level', (req, res) => {
 	res.status(200).end(new Buffer(imgArray.buffer), 'binary');
 });
 
+app.get('/gradientGenerator', (req, res) => {
+	res.status(200).render('gradientGenerator', {});
+});
+
 app.get('/test', (req, res) => {
 	res.status(200).render('index', {
 		context: {
