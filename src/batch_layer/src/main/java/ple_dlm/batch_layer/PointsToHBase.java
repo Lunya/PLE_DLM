@@ -1,5 +1,7 @@
 package ple_dlm.batch_layer;
 
+import java.io.IOException;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -9,9 +11,14 @@ import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.mapred.TableOutputFormat;
+import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
 import org.apache.hadoop.hbase.spark.JavaHBaseContext;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.mapreduce.Job;
 import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
@@ -81,10 +88,34 @@ public class PointsToHBase {
 		//JavaRDD<> filteredPoints = points.reduce(f);
 
 		// put rdd on hbase
+		hbaseConf.set(TableInputFormat.INPUT_TABLE, tableName);
+		Job newAPIJobConfiguration = null;
+		try {
+			newAPIJobConfiguration = Job.getInstance(hbaseConf);
+			newAPIJobConfiguration.getConfiguration().set(TableOutputFormat.OUTPUT_TABLE, tableName);
+			newAPIJobConfiguration.setOutputFormatClass(org.apache.hadoop.hbase.mapreduce.TableOutputFormat.class);
+			System.out.println("Job created");
+		} catch (IOException e) {
+			System.out.println("Job not created");
+			e.printStackTrace();
+		}
+		JavaPairRDD<ImmutableBytesWritable, Put> ppoints = points.mapToPair((row) -> {
+			Put put = new Put(Bytes.toBytes(
+					GeoHash.encodeHash(
+							row._1(),
+							row._2(),
+							6)));
+			put.addColumn(Bytes.toBytes("p"),
+					Bytes.toBytes("p"),
+					Bytes.toBytes((int)(row._1() + row._2())));
+			return new Tuple2<>(new ImmutableBytesWritable(), put);
+		});
+		ppoints.saveAsNewAPIHadoopDataset(newAPIJobConfiguration.getConfiguration());
+		
 		/*long nbPoints = points.count();
 		System.out.println("Total number of points: " + nbPoints);*/
-		createTable();
-		JavaHBaseContext hbaseContext = new JavaHBaseContext(sparkContext, hbaseConf);
+		//createTable();
+		/*JavaHBaseContext hbaseContext = new JavaHBaseContext(sparkContext, hbaseConf);
 		hbaseContext.bulkPut(
 				points, TableName.valueOf(tableName),
 				(point) -> {
@@ -97,6 +128,6 @@ public class PointsToHBase {
 							Bytes.toBytes("p"),
 							Bytes.toBytes((int)(point._1() + point._2())));
 					return row;
-				});
+				});*/
 	}
 }
