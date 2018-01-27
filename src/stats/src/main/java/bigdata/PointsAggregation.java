@@ -1,22 +1,16 @@
 package bigdata;
 
-import java.nio.ByteBuffer;
-import java.util.function.Consumer;
-
 import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaDoubleRDD;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.VoidFunction;
-import org.apache.spark.util.StatCounter;
 
 import scala.Tuple2;
 import scala.Tuple3;
 
 public class PointsAggregation {
 
-	private static final String dem3Path = "/user/lsannic/dem3_lat_lng.min.txt";
+	private static final String dem3Path = "/user/lsannic/dem3_lat_lng.med.txt";
 	
 	public static void main(String[] args) {
 		SparkConf conf = new SparkConf().setAppName("Aggregation PLE_DLM");
@@ -51,9 +45,15 @@ public class PointsAggregation {
 			return new Tuple3<Double, Double, Integer>(latitude, longitude, height); 
 		});
 		
-		/*
+		JavaRDD<Tuple3<Double, Double, Integer> > rddDEM3Filtered = rddDEM3.filter((s) -> {
+			if (s._1() < -90 || s._1() >= 90 || s._2() < -180 || s._2() >= 180 || s._3() < 0 || s._3() > 9000)
+				return false;
+			else
+				return true;
+		});
 		
-		*/
+		//rddDEM3Filtered = rddDEM3Filtered.cache();
+		
 		int zoom = 0;
 		double latSeparator = (1 * Math.pow(2, zoom));
 		double lonSeparator = (2 * Math.pow(2, zoom));
@@ -66,7 +66,7 @@ public class PointsAggregation {
 		//Doing : Regrouper les points appartenant à la même région et au même pixel.
 		//Clé : Lat/Long (Region) + X/Y (Pixel Local).
 		//Valeur : Iterable (Lat / Long / Alt)
-		JavaPairRDD<String, Iterable<Tuple3<Double, Double, Integer> > > rddImages = rddDEM3.groupBy((t) -> {
+		JavaPairRDD<String, Iterable<Tuple3<Double, Double, Integer> > > rddImages = rddDEM3Filtered.groupBy((t) -> {
 			double latitude = t._1();
 			double longitude = t._2();
 			
@@ -89,13 +89,13 @@ public class PointsAggregation {
 			return key;
 		});
 		
-		rddImages.saveAsTextFile("/user/dimprestat/test_alpha_3");
+		//rddImages.saveAsTextFile("/user/dimprestat/test_alpha_4");
 		
 		//Done : Il faut réduire l'Iterable de points à un seul Point (surtout : une altitude)
 		//Clé : Lat/Long (Region) + X/Y (Pixel Local).
 		//Valeur : Lat Long Altitude
 		JavaPairRDD<String, Tuple3<Double, Double, Integer>> rddImagesAggregated = rddImages.mapValues((t) -> {
-			int max = 0;
+			int max = -1;
 			Tuple3<Double, Double, Integer> maxElem = null;
 			for (Tuple3<Double, Double, Integer> point : t) {
 				if (max < point._3()) {
@@ -106,7 +106,7 @@ public class PointsAggregation {
 			return maxElem;
 		});
 		
-		rddImagesAggregated.saveAsTextFile("/user/dimprestat/test_beta_3");
+		rddImagesAggregated.saveAsTextFile("/user/dimprestat/test_beta_4");
 		//Done : On transforme le type de point en changeant le type de clé.
 		//Clé : Lat/Long (Region).
 		//Valeur : X/Y (Pixel) Altitude
@@ -149,8 +149,8 @@ public class PointsAggregation {
 		});
 		
 		//rddImagesRegionMatrixed.saveAsNewAPIHadoopDataset(conf);
-		rddImagesRegionMatrixed.saveAsTextFile("/user/dimprestat/test_gamma_3");
-		
+		//rddImagesRegionMatrixed.saveAsTextFile("/user/dimprestat/test_gamma_4");
+		//context.close();
 		
 		
 		//Todo : Insertion dans hBase en convertissant la matrice en une autre structure de donnée.
