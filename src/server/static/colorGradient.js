@@ -19,6 +19,32 @@ let ColorGradient = function() {
 		this.colorPoints.sort((a, b) => a.val > b.val);
 	};
 
+	/* object of the form :
+		{
+			name: "NameOfGradient",
+			values: {
+				stopPoint: [red, green, blue],
+				...
+			}
+		}
+		It will be further accessed by: "create('NameOfGradient')".
+	*/
+	this.fromObject = function(object) {
+		this.knownGradients[object.name] = Object.keys(object.values).map((key) => {
+			const val = object.values[key];
+			return new ColorGradient.ColorPoint(key, val[0], val[1], val[2]);
+		});
+		this.knownGradients[object.name].sort((a, b) => a.val > b.val);
+		this.create(object.name);
+	}
+
+	this.create = function(name) {
+		if (Object.keys(this.knownGradients).indexOf(name) !== -1)
+			this.colorPoints = this.knownGradients[name];
+		else
+			this.clearGradient();
+	}
+
 	this.clearGradient = function() {
 		this.colorPoints = [];
 	};
@@ -44,6 +70,7 @@ let ColorGradient = function() {
 	};
 	// constructor
 	this.colorPoints = [];
+	this.knownGradients = {};
 };
 
 ColorGradient.ColorPoint = function(val, r, g, b) {
@@ -71,7 +98,7 @@ ColorGradient.prototype.createHotmap = function() {
 	this.addColorPoint(new ColorGradient.ColorPoint(1.0, 1.0, 1.0, 1.0));
 };
 
-ColorGradient.prototype.createRainbow = function() {
+ColorGradient.prototype.createGPS = function() {
 	this.clearGradient();
 	this.addColorPoint(new ColorGradient.ColorPoint(0.000/100,   0/255,  0/255,   0/255));
 	this.addColorPoint(new ColorGradient.ColorPoint(6.250/100,   0/255,  5/255,  25/255));
