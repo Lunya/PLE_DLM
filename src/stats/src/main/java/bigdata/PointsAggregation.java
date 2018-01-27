@@ -57,10 +57,12 @@ public class PointsAggregation {
 		int zoom = 0;
 		double latSeparator = (1 * Math.pow(2, zoom));
 		double lonSeparator = (2 * Math.pow(2, zoom));
-		
+		System.out.println("LatSeparator : " + latSeparator);
+		System.out.println("LonSeparator : " + lonSeparator);
 		double latStep = 180/latSeparator;
 		double lonStep = 360/lonSeparator;
-		
+		System.out.println("LatStep : " + latStep);
+		System.out.println("LonStep : " + lonStep);
 		//Doing : Regrouper les points appartenant à la même région et au même pixel.
 		//Clé : Lat/Long (Region) + X/Y (Pixel Local).
 		//Valeur : Iterable (Lat / Long / Alt)
@@ -71,13 +73,14 @@ public class PointsAggregation {
 			latitude +=90;
 			longitude +=180;
 			
-			latitude = latitude/latStep;
-			longitude = longitude/lonStep;
+			latitude = Math.floor(latitude/latStep);
+			longitude = Math.floor(longitude/lonStep);
 			
-			double latKey = Math.floor(latitude);
-			double lonKey = Math.floor(longitude);
-			int xKey =  (int) Math.floor((t._1() - latKey) * (latStep/256.0));
-			int yKey = (int) Math.floor((t._2() - lonKey) * (lonStep/256.0));
+			double latKey = latitude * latStep;
+			double lonKey = longitude * lonStep;
+			
+			int xKey =  (int) Math.floor(((t._2()+180) - lonKey) * (256.0/lonStep));
+			int yKey = (int) Math.floor(((t._1()+90) - latKey) * (25.06/latStep));
 			
 			latKey -=90;
 			lonKey -=180;
