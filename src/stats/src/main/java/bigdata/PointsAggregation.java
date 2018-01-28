@@ -80,7 +80,7 @@ public class PointsAggregation {
 			double lonKey = longitude * lonStep;
 			
 			int xKey =  (int) Math.floor(((t._2()+180) - lonKey) * (256.0/lonStep));
-			int yKey = (int) Math.floor(((t._1()+90) - latKey) * (25.06/latStep));
+			int yKey = (int) Math.floor(((t._1()+90) - latKey) * (256.0/latStep));
 			
 			latKey -=90;
 			lonKey -=180;
