@@ -1,0 +1,184 @@
+\documentclass[a4paper]{article}
+
+%% Language and font encodings
+\usepackage[english]{babel}
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+
+%% Sets page size and margins
+\usepackage[a4paper,top=3cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+
+%% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorinlistoftodos]{todonotes}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+
+\title{Projet Programmation Large Échelle}
+\author{Marc-Alexandre \sc{Espiaut}, Dimitri \sc{Prestat}, Ludovic \sc{San Nicolas}}
+
+\usepackage[printwatermark]{xwatermark}
+\usepackage{xcolor}
+\newwatermark[allpages,color=black!25,angle=45,scale=5,xpos=0,ypos=0]{DRAFT}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+L'objectif de ce projet était de produire un programme composé de deux parties :
+\begin{enumerate}
+\item Le \textsf{batch layer} qui a pour objectif de traiter une grosse quantitée de données et de l'\emph{indexer} pour obtenir un accès rapide aux résultats.
+\item L'\textsf{application web} permettant un accès à ces données via une interface web.
+\end{enumerate}
+
+	Le travail se découpe en 6 parties :
+\begin{itemize}
+\item La réduction des données d'entrée et leur filtrage afin d'obtenir des données normalisées et prêtes à l'insertion en base de données pour les données de hauteur.
+\item Le calcul des différents niveaux d'après les données de hauteur déjà filtrées et normalisées de l'étape précédente.
+\item Le filtrage des données et leur insertion en base de données (OpenStreetMap). % ???? Ça veux dire quoi ?
+\item Mise en place de l'architecture de la base de données HBase.
+\item La conception d'une application web permettant la visualisation de ces données sur navigateur web à la façon Google Maps.
+\item La réalisation d'un serveur permettant de distribuer l'application web et de récupérer des données dans la base de données.
+\end{itemize}
+
+\section{Évolution du projet}
+
+\subsection{Conception}
+	Dans un premier temps, nous avons commencé a imaginer comment pouvait fonctionner l'application.
+Suite a l'analyse préliminaires des fichiers mis a disposition, nous en avons conclu que le système de coordonnées utilisé était le système GPS standard de type \texttt{latitude:longitude} dont les coordonnées étaient stockées sous forme de degrés décimaux. Des coordonnées de type latitude : $lat \in [-90.0; 90.0[$ et longitude $lng \in [-180.0; 180.0[$.
+Le sujet précisant que les données devaient être regroupées dans des images carrées de taille $256 \times 256$ pixels, nous avons décidé de découper le premier niveau de zoom sous la forme de deux carrés couvrant respectivement : $-90.0;-180.0$ à $90.0;0.0$ et $-90.0;0.0$ à $90.0;180.0$. Soit deux carrés horizontaux, ceux-ci servant de base a la suite de notre raisonnement.
+
+	Suivant ce principe, et sachant que chaque niveau est le résultat de la découpe de chaque carré du niveau précédent en quatre -- deux verticalement et deux horizontalement -- nous avons décrit l'évolution du nombre de pixels sur la carte selon le nombre de niveaux avec l'équation suivante :
+$$\mathcal{S} = \sum_{i=0}^{n} t \times 2 \times 256^{2} \times 4^{i}$$
+Avec :
+\begin{itemize}
+\item $t$ la taille en octets du type de données utilisées pour stocker l'information relative à un pixel.
+\item $n$ le nombre maximum de paliers choisis $-1$ pour le niveau de zoom maximum, $0$ désignant deux carrés sur la carte.
+\end{itemize}
+
+	Dans un souci d’optimisation, nous avions pensé enregistrer dans la base de données non pas les couleurs d'un pixel calculées en fonction de son altitude, mais juste la hauteur d'un pixel. Dans un premier temps, la valeur en hauteur étant comprise dans l'intervalle $h \in [0;8000]$, elle peut être codée sur un entier de 16 bits. Cela est bien plus court que la valeur d'une couleur, souvent codée sous forme de triplet d'octet soit 24 bits.
+    
+De plus, nous pensions enregistrer directement les images dans la base de données, et ainsi n'ajouter comme poids à celles-ci que la coordonnée latitude/longitude de leur coin supérieur droit dans la base, et non pas chaque pixel indépendamment. Ceci étant possible en sérialisant les données sous forme de tableau de $256 \times 256 \times 2$ octets.
+
+	Nous pouvons donc calculer la taille occupée par une telle quantité d'informations dans la base. En utilisant l'équation $\mathcal{S}$ en fixant $t = 2$ et en faisant varier $n$, nous obtenons :
+
+\noindent
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+$n$ & taille en octets & taille en Go & taille maximum de la carte (px) & précision angulaire (deg)\\\hline
+0 & 131072 & 0.000122 & $512 \times 256$ & 0.7031°\\\hline
+1 & 655360 & 0.00061 & $1024 \times 512$ & 0.3515°\\\hline
+2 & 2751512 & 0.00256 & $2048 \times 1024$ & 0.1757°\\\hline
+3 & 11141120 & 0.01037 & $4096 \times 2048$ & 0.0878°\\\hline
+4 & 44695552 & 0.04162 & $8192 \times 4096$ & 0.0439°\\\hline
+5 & 178913280 & 0.16662 & $16384 \times 8192$ & 0.0219°\\\hline
+6 & 175784192 & 0.66662 & $32768 \times 16384$ & 0.0109°\\\hline
+7 & 2863267840 & 2.66666 & $65536 \times 32768$ & 0.00549°\\\hline
+8 & 11453202432 & 10.6666 & $131072 \times 65536$ & 0.00274°\\\hline
+9 & 45812940800 & 42.6666 & $262144 \times 131072$ & 0.00137°\\\hline
+10 & 183251894272 & 170.666 & $524288 \times 262144$ & 0.00137°\\\hline
+11 & 733007708160 & 682.666 & $1048576 \times 524288$ & 0.00137°\\\hline
+12 & 2932030963712 & 2730.6666 & $2097152 \times 1048576$ & 0.00137°\\\hline
+\end{tabular}
+
+	Ce tableau ne prend en compte que les données d'altitude et ne prend pas en compte les colonnes de positionnement les métadonnées utiles au stockage sur HBase -- les noms des colonnes étant considérées comme des clés dans l'ensemble $key \times value$ de HBase, celles-ci prennent de la place, ainsi que les timestamps --, il est néanmoins une bonne heuristique de la taille des données a prévoir.
+    
+Nous avons choisi $n = 9$ soit 10 niveaux de zoom pour la carte. Les données d'entrée ont une précision de 3 secondes d'arc -- ce qui fait \emph{0,000833°} -- nous pouvons donc gérer 10 niveaux de zoom sans devoir "créer" d'informations pour cause de manque.
+
+	Vient ensuite le fichier d'OpenStreetMap, celui ci contient uniquement des coordonnées de type latitude/longitude. On en déduit donc que ce sont des données représentant des points d'intérêt, comme des lieux souvent visités. Le fichier comportant des doublons, nous avions prévu de le supprimer et d'enregistrer dans la base de données uniquement les coordonnées et le nombre de points a ces coordonnées. De plus, notre plus grand niveau de zoom étant bien moins précis que les coordonnées de ces points, nous pesions faire une réduction comptant le nombre de points par "pixel" afin de réduire encore la place prise par ces données dans la base.
+Du point de vue de l'affichage, les données auraient été affichées comme des points dans un premier temps, puis dans un second temps une "height map" serait affichée par transparence au dessus de la carte de couleurs de la planète, représentant les zones les plus "visitées" en rouge et les moins en bleu avec un dégradé passant par le jaune et le vert.
+
+\subsection{Développement}
+
+Voici la chaîne de jobs Spark qui permet d'effectuer le traitement des fichiers .txt concernant les points.
+Elle se trouve pour l'instant dans \texttt{/src/stats/src/main/java/bigdata/PointsAggregation.java}
+	
+\begin{itemize}
+\item Le premier job consiste à lire le fichier texte contenant tous les points à l'aide du \texttt{JavaSparkContext .textFile()}.
+\\
+On obtient donc les lignes du fichier donc un \texttt{JavaRDD<String>}.
+\\
+\textbf{Clé} : $\emptyset$
+\\
+\textbf{Valeur} : Ligne du fichier
+\\
+\textbf{Nombre de valeurs} : Egal au nombre de lignes dans le fichier.
+\item On mappe ensuite ces valeurs à l'aide de \texttt{JavaRDD.map} afin de récupérer les points à partir de ces lignes, le but étant d'obtenir des triplés {double, double, entier} afin de récupérer les informations latitude, longitude, altitude. 
+\\
+On obtient  donc un \texttt{JavaRDD<Tuple3<Double, Double, Integer>>}.
+\\
+\textbf{Clé}: $\emptyset$
+\\
+\textbf{Valeur}  : {Latitude, Longitude, Altitude}
+\\
+\textbf{Nombre de valeurs} : Egal au nombre de lignes dans le fichier.
+\item On filtre ensuite ces données des données éronnées à l'aide de \texttt{JavaRDD.filter}. les données éronnées sont celles ayant :
+\begin{itemize}
+\item Une latitude non comprise dans l'intervalle $ [-90.0; 90.0[$
+\item Une longitude non comprise dans l'intervalle $[-180.0; 180.0[$
+\item Une altitude non comprise dans l'intervalle $[0; 9000]$ , 9000 étant une valeur arbitraire, les plus grands points connus de la terre étant proche des 8848m (Everest).
+\end{itemize}
+\textbf{Clé}: $\emptyset$
+\\
+\textbf{Valeur}  : {Latitude, Longitude, Altitude}
+\\
+\textbf{Nombre de valeurs} : Egal, dans le pire des cas ou toutes les lignes sont bonnes, au nombre de lignes dans le fichier.
+\item On regroupe ensuite ces points en ajoutant une clé à l'aide de \texttt{JavaRDD.groupBy()} contenant les informations sur la région concernée, et le pixel local à la région. Plusieurs points pouvant concerner le même pixel de la même région. La région concernée étant calculé selon le niveau de zoom.
+\\
+On passe donc d'un simple RDD à un \texttt{JavaPairRDD<String, Iterable<Tuple3<Double, Double, Integer> > >}.
+\\
+\textbf{Clé}: \texttt{Region.Latitude\#Region.Longitude\#Pixel.X\#Pixel.Y}
+\\
+\textbf{Valeur}  : [ {Latitude, Longitude, Altitude} ]
+\\
+\textbf{Nombre de valeurs} : Egal au nombre de pixels par régions, par niveau de zoom. Soit : $\sum_{i=0}^{n} 256^{2} \times 4^{i}$.
+\item Chaque pixel de chaque région ayant maintenant un ensemble d'altitude, il faut maintenant sélectionner une seule altitude. On décide de mapper cet ensemble à l'aide de \texttt{JavaPairRDD.mapValues()} pour ne récupérer que l'altitude maximum pour chaque pixel.
+\\
+On passe donc à \texttt{JavaPairRDD<String, Tuple3<Double, Double, Integer>}.
+\\
+\textbf{Clé}: \texttt{Region.Latitude\#Region.Longitude\#Pixel.X\#Pixel.Y}
+\\
+\textbf{Valeur}  : {Latitude, Longitude, Altitude}
+\\
+\textbf{Nombre de valeurs} : Egal au nombre de pixels par régions, par niveau de zoom (Comme au dessus)
+\item On transforme le type de point à l'aide de \texttt{JavaPairRDD.mapToPair()} en changeant le type de clé, pour passer l'information du pixel de la clé à  la valeur, ne restant que les informations de la région dans la clé, ainsi qu'enlever les informations de latitude, longitude de la valeur maintenant obsolète, pour ensuite rassembler tous les pixels par région en connaissant leurs coordonnées X/Y.
+\\
+On passe donc à un \texttt{JavaPairRDD<String, Tuple3<Integer, Integer, Integer>>}.
+\\
+\textbf{Clé}: \texttt{Region.Latitude\#Region.Longitude}
+\\
+\textbf{Valeur}  : {Pixel.X, Pixel.Y, Altitude}
+\\
+\textbf{Nombre de valeurs} : Egal au nombre de régions, par niveau de zoom. Soit : $\sum_{i=0}^{n} 256^2 \times 4^{i}$.
+\item On regroupe ensuite tous les pixels par région à l'aide de \texttt{JavaPairRDD.groupByKey()}.
+\\
+On passe donc à un \texttt{JavaPairRDD<String, Iterable<Tuple3<Integer, Integer, Integer>>>}.
+\\
+\textbf{Clé}: \texttt{Region.Latitude\#Region.Longitude}
+\\
+\textbf{Valeur}  : [ {Pixel.X, Pixel.Y, Altitude} ]
+\\
+\textbf{Nombre de valeurs} : Egal au nombre de régions, par niveau de zoom. Soit : $\sum_{i=0}^{n} 4^{i}$.
+\item On transforme ensuite l'ensemble de pixels par région en une nouvelle structure de donnée, permettant l'insertion future dans hBase. On choisit ici de faire un tableau de byte, ce tableau étant la matrice d'altitude lié à la région. C'est la dernière étape avant l'insertion dans hBase.
+\\
+On passe donc maintenant à un \texttt{JavaPairRDD<String, byte[]>}.
+\\
+\textbf{Clé}: \texttt{Region.Latitude\#Region.Longitude}
+\\
+\textbf{Valeur} : byteMatrix
+\end{itemize}
+
+\section{Performances}
+
+\section{Difficultés rencontrées}
+
+La réalisation du projet a été confrontée aux difficultés suivantes :
+
+\paragraph{Manque ou absence de documentation} La documentation pour certaines technologies utilisées dans le projet, par exemple HBase, n'est pas assez clairement définie. Les exemple d'utilisation de code sont plus souvent donnés pour le language Scala et Python. L'absence d'exemple court et simple en Java pour l'utilisation de Spark et HBase a été un handicap considérable qui nous a replié sur la lecture du code source de HBase et de Spark. Nous nous sommes sentis dépassés par rapport aux notions abordées en TP et au temps que nous avons passé au préallable sur l'utilisation de Spark et HBase.
+
+\paragraph{Cluster surchargé ou inoppérant} Le cluster installé au CREMI a souffert d'instabilité, et de déconnexion intempestive. Soit par utilisation intensive des ressources de la part de tous les étudiants, soit par déconnexion des machines, dont certaines ont été relancées sous Windows, et donc impossible à relancer via l'interface web du CREMI.
+
+
+
+\end{document}

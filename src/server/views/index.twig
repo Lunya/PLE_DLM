@@ -21,6 +21,7 @@
 	</div>
 </body>
 <script src="/ajax.js" type="text/javascript"></script>
+<script src="colorGradient.js" type="text/javascript"></script>
 <script src="map.js" type="text/javascript"></script>
 <script type="text/javascript">
 ajax.setDefault({
@@ -30,7 +31,7 @@ ajax.setDefault({
 });
 let content = document.querySelector('#content');
 let map = new Map(content);
-map.write(new Point(30, 60), 'Hello world', 40);
+//map.write(new Point(30, 60), 'Hello world', 40);
 ajax.post('/image', { lat: 1, lng: -1, img: 'height' })
 	.then(function(body) {
 	}, function(err) {console.log(err);});
@@ -44,13 +45,18 @@ ajax({
 	jjjj = new Uint16Array(body);
 }, function(err) {console.log(err);});
 
+let gradient = new ColorGradient();
+gradient.createGPS();
 ajax({url: '/image', method: 'POST', type: 'arraybuffer', data: {lat:0, lng:0, imh: 'height'}})
 	.then(function(data) {
-		let i = new MapImage(new Uint16Array(data), new Point(256, 256), new Point(256, 256))
-		i.buildImage();
+		let i = new MapImage(new Uint16Array(data), new Point(256, 256), new Point(-180, -90), 0);
+		i.buildImage(gradient);
+		map.images.push(i);
+		i = new MapImage(new Uint16Array(data), new Point(256, 256), new Point(0, -90), 0);
+		i.buildImage(gradient);
 		map.images.push(i);
 	});
 
-setInterval(() => map.update(), 1000);
+//setInterval(() => map.update(), 1000);
 </script>
 </html>

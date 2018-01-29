@@ -7,16 +7,15 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.util.Bytes;
 
 public class HBaseSetup {
-	public static final byte[] HEIGHT_FAMILY = Bytes.toBytes("h");
-	public static final byte[] INTERESTING_POINT_FAMILY = Bytes.toBytes("h");
+	public static final String HEIGHT_FAMILY = "h";
+	public static final String INTERESTING_POINT_FAMILY = "p";
 	
-	public static final byte[] LATITUDE_COL = Bytes.toBytes("a");
-	public static final byte[] LONGITUDE_COL = Bytes.toBytes("o");
-	public static final byte[] ZOOM_COL = Bytes.toBytes("z");
-	public static final byte[] HEIGHT_COL = Bytes.toBytes("h");
+	public static final String LATITUDE_COL = "a";
+	public static final String LONGITUDE_COL = "o";
+	public static final String HEIGHT_COL = "h";
+	public static final String ZOOM_COL = "z";
 	
 	private static void createOrOverwrite(Admin admin, HTableDescriptor table) throws IOException {
 		if (admin.tableExists(table.getTableName())) {
@@ -27,12 +26,12 @@ public class HBaseSetup {
 	}
 	
 	private static void createHeightColumnFamily(HTableDescriptor table) {
-		HColumnDescriptor columnFamily = new HColumnDescriptor(HEIGHT_FAMILY);
+		HColumnDescriptor columnFamily = new HColumnDescriptor(HEIGHT_FAMILY.getBytes());
 		table.addFamily(columnFamily);
 	}
 	
 	private static void createInterestingPointColumnFamily(HTableDescriptor table) {
-		HColumnDescriptor columnFamily = new HColumnDescriptor(INTERESTING_POINT_FAMILY);
+		HColumnDescriptor columnFamily = new HColumnDescriptor(INTERESTING_POINT_FAMILY.getBytes());
 		table.addFamily(columnFamily);
 	}
 	

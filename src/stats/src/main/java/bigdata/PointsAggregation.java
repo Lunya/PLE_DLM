@@ -115,6 +115,9 @@ public class PointsAggregation {
 			//Clé : Lat/Long (Region).
 			//Valeur : X/Y (Pixel) Altitude
 			
+			//int xKey =  (int) Math.floor(((t._2()+180) - lonKey) * (256.0/lonStep));
+			//int yKey = (int) Math.floor(((t._1()+90) - latKey) * (256.0/latStep));
+
 			
 			JavaPairRDD<String, Tuple3<Integer, Integer, Integer>> rddImagesTrans = rddImagesAggregated.mapToPair((t) -> {
 				String split[] = t._1().split("#");

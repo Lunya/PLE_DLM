@@ -13,11 +13,11 @@ if __name__ == '__main__':
 
 	size = 0
 	'''
-	\sum_{i=0}^{n} t \times 256^{2} \times 4^{i}
+	\sum_{i=0}^{n} t \times 2 \times 256^{2} \times 4^{i}
 	With n the number of levels and t the datatype size
 	'''
 	for n in range(levels):
-		tmp = 2 * (imageSize ** 2) * (4 ** n)
+		tmp = dataSize * 2 * (imageSize ** 2) * (4 ** n)
 		size += tmp
 
 	print '''Estimated occupied size for parameters:

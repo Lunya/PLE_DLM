@@ -9,24 +9,29 @@
 			<button type="button" id="dumpDatabase">Dump database</button>
 		</form>
 	</body>
+	<input type="text" id="search">
+	<div id="infos"></div>
 	<ul id="databaseList"></ul>
 	<img id="preview"></img>
 
 	<script type="text/javascript" src="/ajax.js"></script>
 	<script type="text/javascript" src="/colorGradient.js"></script>
 	<script type="text/javascript">
+	let search = document.querySelector('#search');
+	let infos = document.querySelector('#infos');
 	let dumpDatabase = document.querySelector('#dumpDatabase');
 	let databaseList = document.querySelector('#databaseList');
 
+	let rows = [];
+
 	dumpDatabase.addEventListener('click', function(e) {
 		ajax.get('/hbase/list').then(function(body) {
-			databaseList.innerHTML = '';
-			body.forEach(e => {
+			rows = body;
+			/*body.forEach(e => {
 				let li = document.createElement('li');
 				li.innerHTML = '<b>Row: </b><span>' + e['row'] + '</span> <i>latitude: </i>' + e['h:la'] + ' <i>longitude: </i>' + e['h:lo'];
 				databaseList.appendChild(li);
-			});
-			console.log(body);
+			});*/
 		}, function (err) {
 			console.log(err);
 		});
@@ -69,6 +74,19 @@
 					ctx.strokeText(text, 20, 42);*/
 					document.querySelector('#preview').src = canvas.toDataURL('image/png');
 				});
+		}
+	});
+	search.addEventListener('keyup', (e) => {
+		if (e.target.value.length > 3) {
+			databaseList.innerHTML = '';
+			const regex = new RegExp(e.target.value, 'i');
+			let filtered = rows.filter(e => regex.test(e['row']));
+			filtered.slice(0, 1000).forEach(e => {
+				let li = document.createElement('li');
+				infos.innerHTML = filtered.length + ' results';
+				li.innerHTML = '<b>Row: </b><span>' + e['row'] + '</span> <i>latitude: </i>' + e['h:la'] + ' <i>longitude: </i>' + e['h:lo'];
+				databaseList.appendChild(li);
+			});
 		}
 	});
 	</script>
