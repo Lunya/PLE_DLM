@@ -30,9 +30,9 @@ let Point = function(x, y) {
 	};
 };
 
-let MapImage = function(data, size, position) {
+let MapImage = function(data, size, position, zoomLevel) {
 	// private functions
-	this.buildImage = function() {
+	this.buildImage = function(gradient) {
 		let canvas = document.createElement('canvas');
 		let ctx = canvas.getContext('2d');
 		canvas.width = this.size.x;
@@ -41,9 +41,10 @@ let MapImage = function(data, size, position) {
 		let data = id.data;
 		for (let i = 0, size = this.data.length; i < size; i++) {
 			let I = i * 4;
-			data[I] = this.data[i] / 256;// / 8000;
-			data[I+1] = this.data[i] % 256;// / 8000;
-			data[I+2] = this.data[i] / 256;// / 8000;
+			const color = gradient.getColorAtValue((this.data[i] + 8001)/16000);
+			data[I] = color.r * 255;
+			data[I+1] = color.g * 255;
+			data[I+2] = color.b * 255;
 			data[I+3] = 255;
 		}
 		ctx.putImageData(id, 0, 0);
@@ -66,6 +67,7 @@ let MapImage = function(data, size, position) {
 	this.data = data; // Bitmap
 	this.size = size; // Point
 	this.position = position; // Point
+	this.zoomLevel = zoomLevel;
 	this._image = new Image();
 	this._lastAccess = Date.now();
 };
@@ -84,11 +86,6 @@ let Map = function(parent) {
 	this.update = function() {
 		// reset map
 		this.ctx.clearRect(0, 0, this.size.x, this.size.y);
-
-		for (let i = 0; i < this.images.length; i++) {
-			let image = this.images[i];
-			this.ctx.drawImage(image.getImage(), image.position.x, image.position.y);
-		}
 		// draw meridians
 		// draw map boundaries
 		const mapSize = this.mapSize.clone().mulBy(this.zoom);
@@ -102,8 +99,8 @@ let Map = function(parent) {
 
 		for (let i = 0; i < this.images.length; ++i) {
 			const image = this.images[i];
-			const position = image.position.clone().mulBy(this.zoom).add(mapPosition);
-			const size = image.size.clone().mulBy((180 / (2**0)) / 256).mulBy(this.zoom);
+			const position = image.position.clone().add(new Point(180, 90)).mulBy(this.zoom).add(mapPosition);
+			const size = image.size.clone().mulBy((180 / (2**image.zoomLevel)) / 256).mulBy(this.zoom);
 			console.log('Image drawed to ', position.toString());
 			this.ctx.drawImage(image.getImage(),
 				position.x, position.y,

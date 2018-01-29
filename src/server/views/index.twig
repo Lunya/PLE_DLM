@@ -45,10 +45,15 @@ ajax({
 	jjjj = new Uint16Array(body);
 }, function(err) {console.log(err);});
 
+let gradient = new ColorGradient();
+gradient.createGPS();
 ajax({url: '/image', method: 'POST', type: 'arraybuffer', data: {lat:0, lng:0, imh: 'height'}})
 	.then(function(data) {
-		let i = new MapImage(new Uint16Array(data), new Point(256, 256), new Point(90, 45))
-		i.buildImage();
+		let i = new MapImage(new Uint16Array(data), new Point(256, 256), new Point(-180, -90), 0);
+		i.buildImage(gradient);
+		map.images.push(i);
+		i = new MapImage(new Uint16Array(data), new Point(256, 256), new Point(0, -90), 0);
+		i.buildImage(gradient);
 		map.images.push(i);
 	});
 

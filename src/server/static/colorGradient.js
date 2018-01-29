@@ -36,14 +36,14 @@ let ColorGradient = function() {
 		});
 		this.knownGradients[object.name].sort((a, b) => a.val > b.val);
 		this.create(object.name);
-	}
+	};
 
 	this.create = function(name) {
 		if (Object.keys(this.knownGradients).indexOf(name) !== -1)
 			this.colorPoints = this.knownGradients[name];
 		else
 			this.clearGradient();
-	}
+	};
 
 	this.clearGradient = function() {
 		this.colorPoints = [];
@@ -57,7 +57,7 @@ let ColorGradient = function() {
 			if (value < currC.val) {
 				const prevC = this.colorPoints[Math.max(0, i-1)];
 				const valueDiff = prevC.val - currC.val;
-				const fractBetween = (valueDiff == 0.0) ? 0.0 : (value - currC.val) / valueDiff;
+				const fractBetween = (valueDiff === 0.0) ? 0.0 : (value - currC.val) / valueDiff;
 				return new Color(
 					(prevC.r - currC.r) * fractBetween + currC.r,
 					(prevC.g - currC.g) * fractBetween + currC.g,
