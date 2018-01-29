@@ -6,6 +6,28 @@ const LONGITUDE_MAX = 180.0;
 let Point = function(x, y) {
 	this.x = x || 0;
 	this.y = y || 0;
+
+	this.toString = () => {
+		return '<Point> x:' + this.x.toString() + ' y:' + this.y.toString();
+	};
+	this.clone = () => {
+		return new Point(this.x, this.y);
+	};
+	this.mul = (point) => {
+		this.x *= point.x; this.y *= point.y; return this;
+	};
+	this.div = (point) => {
+		this.x /= point.x; this.y /= point.y; return this;
+	};
+	this.mulBy = (num) => {
+		this.x *= num; this.y *= num; return this;
+	};
+	this.add = (point) => {
+		this.x += point.x; this.y += point.y; return this;
+	};
+	this.sub = (point) => {
+		this.x -= point.x; this.y -= point.y; return this;
+	};
 };
 
 let MapImage = function(data, size, position) {
@@ -24,7 +46,7 @@ let MapImage = function(data, size, position) {
 			data[I+2] = this.data[i] / 256;// / 8000;
 			data[I+3] = 255;
 		}
-		ctx.putImageData(id, 0, 0);36
+		ctx.putImageData(id, 0, 0);
 		ctx.font = '22px monospace';
 		ctx.fillStyle = '#ff0';
 		ctx.strokeStyle = '#f0f';
@@ -46,7 +68,7 @@ let MapImage = function(data, size, position) {
 	this.position = position; // Point
 	this._image = new Image();
 	this._lastAccess = Date.now();
-}
+};
 
 let Map = function(parent) {
 	// private functions
@@ -60,11 +82,42 @@ let Map = function(parent) {
 	};
 
 	this.update = function() {
+		// reset map
+		this.ctx.clearRect(0, 0, this.size.x, this.size.y);
+
 		for (let i = 0; i < this.images.length; i++) {
 			let image = this.images[i];
 			this.ctx.drawImage(image.getImage(), image.position.x, image.position.y);
 		}
 		// draw meridians
+		// draw map boundaries
+		const mapSize = this.mapSize.clone().mulBy(this.zoom);
+		const mapPosition = this.mapPosition.clone();
+		this.ctx.rect(
+			mapPosition.x, mapPosition.y,
+			mapSize.x, mapSize.y);
+		this.ctx.strokeStyle = '#0F8';
+		this.ctx.lineWidth = 3;
+		this.ctx.stroke();
+
+		for (let i = 0; i < this.images.length; ++i) {
+			const image = this.images[i];
+			const position = image.position.clone().mulBy(this.zoom).add(mapPosition);
+			const size = image.size.clone().mulBy((180 / (2**0)) / 256).mulBy(this.zoom);
+			console.log('Image drawed to ', position.toString());
+			this.ctx.drawImage(image.getImage(),
+				position.x, position.y,
+				size.x, size.y);
+		}
+
+		this.write(new Point(20, 50), this.lastZoom.toString() + ' -> ' + this.zoom.toString());
+
+		// draw mouse position
+		this.ctx.beginPath();
+		this.ctx.arc(
+			this.mousePos.x, this.mousePos.y,
+			5, 0, 2*Math.PI);
+		this.ctx.stroke();
 	};
 
 	// public functions
@@ -84,24 +137,36 @@ let Map = function(parent) {
 
 	this.images = [];
 
-	this.zoom = 1.0; // zoom = pixel * degree
+	this.lastZoom = this.zoom = 1.0; // zoom = pixel * degree
 	this.size = new Point(this.parent.clientWidth, this.parent.clientHeight);
+	this.mapPosition = new Point(0, 0); // position top left corner
+	this.mapSize = new Point(360, 180);
+	this.mousePos = new Point(0, 0);
+	this.lastMousePos = new Point(0, 0);
 	this.resizeCanvas();
 
 	// bindings
 	window.addEventListener('resize', function(e) {
-		this.resizeCanvas();
+		this.resizeCanvas().bind(this);
 	}.bind(this));
 	this.canvas.addEventListener('mousemove', function(e) {
-		this.ctx.beginPath();
-		this.ctx.arc(
-			e.clientX - e.target.offsetLeft,
-			e.clientY - e.target.offsetTop,
-			5, 0, 2*Math.PI);
-		this.ctx.stroke();
+		this.lastMousePos = this.mousePos.clone();
+		this.mousePos.x = e.clientX - e.target.offsetLeft;
+		this.mousePos.y = e.clientY - e.target.offsetTop;
+		this.update();
 	}.bind(this));
 	this.canvas.addEventListener('wheel', function(e) {
 		e.preventDefault();
-		console.log(e);
-	});
+		/*console.log(e.deltaY,
+			e.clientX - e.target.offsetLeft,
+			e.clientY - e.target.offsetTop);*/
+		this.lastZoom = this.zoom;
+		this.zoom = (e.deltaY < 0) ? this.zoom * 1.5 : this.zoom * (1/1.5);
+		const lastMapSize = this.mapSize.clone().mulBy(this.lastZoom);
+		const currMapSize = this.mapSize.clone().mulBy(this.zoom);
+		const fraction = this.mapPosition.clone().sub(this.mousePos).div(lastMapSize); // position of pointer on map (0 on top left, 1 on bottom right)
+		const offset = currMapSize.sub(lastMapSize).mul(fraction);
+		this.mapPosition.add(offset);
+		this.update();
+	}.bind(this));
 };
