@@ -60,9 +60,9 @@
 				<executions>
 					<execution>
 						<phase>package</phase>
-						<goals>
+						<!-- <goals>
 							<goal>shade</goal>
-						</goals>
+						</goals> -->
 					</execution>
 				</executions>
 				<configuration>
