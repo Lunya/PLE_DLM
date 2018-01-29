@@ -6,7 +6,7 @@ const bodyParser = require('body-parser');
 let createEngine = require('node-twig').createEngine;
 const hbase = require('hbase-rpc-client');
 
-process.env.SERVER_PORT = 4200;
+process.env.NODE_PORT = 7531;
 
 const app = express();
 
@@ -146,7 +146,7 @@ app.get('/gradientGenerator', (req, res) => {
 	res.status(200).render('gradientGenerator', {});
 });
 
-app.get('/test', (req, res) => {
+app.get('/', (req, res) => {
 	res.status(200).render('index', {
 		context: {
 			projectName: 'PLE_DLM'
@@ -156,11 +156,6 @@ app.get('/test', (req, res) => {
 
 app.use(express.static(path.join(__dirname, './static')));
 app.use('/ajax.js', express.static(path.join(__dirname, './node_modules/client-ajax/index.js')));
-
-app.get('/', (req, res) => {
-	res.contentType('text/html');
-	res.status(200).send("Hello world!");
-});
 
 app.post('/image', (req, res) => {
 	console.log(req.body);
