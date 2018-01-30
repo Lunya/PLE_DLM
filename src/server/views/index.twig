@@ -12,7 +12,7 @@
 		</header>
 		<div class="main">
 			<div id="options">
-				<div class="option">Option 1</div>
+				<div id="resetView" class="option">Reset view</div>
 				<div class="option">Option 2</div>
 				<div class="option">Option 3</div>
 			</div>
@@ -55,8 +55,17 @@ ajax({url: '/image', method: 'POST', type: 'arraybuffer', data: {lat:0, lng:0, i
 		i = new MapImage(new Uint16Array(data), new Point(256, 256), new Point(0, -90), 0);
 		i.buildImage(gradient);
 		map.images.push(i);
+		i = new MapImage(new Uint16Array(data), new Point(256, 256), new Point(0, -90), 1);
+		i.buildImage(gradient);
+		map.images.push(i);
+		i = new MapImage(new Uint16Array(data), new Point(256, 256), new Point(0, 0), 1);
+		i.buildImage(gradient);
+		map.images.push(i);
 	});
 
+document.querySelector('#resetView').addEventListener('click', (e) => {
+	map.resetView();
+});
 //setInterval(() => map.update(), 1000);
 </script>
 </html>

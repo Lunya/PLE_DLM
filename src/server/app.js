@@ -5,6 +5,11 @@ const path = require('path');
 const bodyParser = require('body-parser');
 let createEngine = require('node-twig').createEngine;
 const hbase = require('hbase-rpc-client');
+const Geohash = require('latlon-geohash');
+const geohash = require('ngeohash');
+
+// for each level, get best geohash precision
+const zoomLevelToGeohash = [];
 
 process.env.NODE_PORT = 7531;
 
@@ -156,6 +161,50 @@ app.get('/', (req, res) => {
 
 app.use(express.static(path.join(__dirname, './static')));
 app.use('/ajax.js', express.static(path.join(__dirname, './node_modules/client-ajax/index.js')));
+
+app.get('/hbase/stats', (req, res) => {
+	const geohashPrecision = 8;
+
+	const topLeft = Geohash.encode(req.body.latMin, req.body.lngMin, geohashPrecision);
+	const bottomRight = Geohash.encode(req.body.latMax, req.body.lngMax, geohashPrecision);
+
+	const columnQualifier = new ArrayBuffer(1);
+	columnQualifier[0] = req.body.zoom;
+	let scan = client.getScanner('dlm');
+	let filterTopLeft = {
+		singleColumnValueFilter: {
+			columnFamily: 'h',
+			columnQualifier: columnQualifier,
+			compareOp: 'GREATER_OR_EQUAL',
+			comparator: {
+				regexStringComparator: {
+					pattern: '.*',
+					patternFlags: '',
+					charset: 'UTF-8'
+				}
+			},
+			filterIfMissing: true,
+			latestVersionOnly: true
+		}
+	};
+	let filterList = new hbase.FilterList();
+	filterList.addFilter(filter);
+	scan.setFilter(filterList);
+	scan.toArray((error, result) => {
+		console.log('We get the list');
+		console.log('h:la ', result[0]['cols']['h:la']);
+		console.log('column 1 ', result[0].columns[1]);
+		const mappedRes = result.map(e => {
+			return { 'row': bytearrayToString(e.row), 'h:la': bytearrayToFloat32(e.cols['h:la'].value), 'h:lo': bytearrayToFloat32(e.cols['h:lo'].value) };
+		});
+		console.log('The list: ', mappedRes);
+		res.status(200).send(mappedRes);
+	});
+
+	res.contentType('application/json');
+	res.status(200).end([{ position: '', zoom: 0, lat: 0.0, lng: 0.0 }]);
+});
+app.get('/hbase/heights', (req, res) => {});
 
 app.post('/image', (req, res) => {
 	console.log(req.body);
