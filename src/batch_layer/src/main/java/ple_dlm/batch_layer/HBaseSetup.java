@@ -9,13 +9,14 @@ import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 
 public class HBaseSetup {
+	public static final String TABLE_BASENAME = "DLM";
 	public static final String HEIGHT_FAMILY = "h";
-	public static final String INTERESTING_POINT_FAMILY = "h";
+	public static final String INTERESTING_POINT_FAMILY = "p";
 	
 	public static final String LATITUDE_COL = "a";
 	public static final String LONGITUDE_COL = "o";
-	public static final String ZOOM_COL = "z";
 	public static final String HEIGHT_COL = "h";
+	public static final String ZOOM_COL = "z";
 	
 	private static void createOrOverwrite(Admin admin, HTableDescriptor table) throws IOException {
 		if (admin.tableExists(table.getTableName())) {

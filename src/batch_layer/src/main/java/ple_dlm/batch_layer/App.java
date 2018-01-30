@@ -34,7 +34,7 @@ public class App
 {
     public static void main( String[] args )
     {
-    	final String tableName = "PLE";
+    	final String tableName = "DLM";
     	
     	SparkConf sparkConf = new SparkConf().setAppName("PLE_DLM batch layer");
     	Configuration hbaseConf = null;
@@ -47,6 +47,7 @@ public class App
     	} catch (Exception e) {
     		e.printStackTrace();
     	}
+    	/*
     	JavaSparkContext jsc = new JavaSparkContext(sparkConf);
     	
     	Connection hbaseConn = null;
@@ -116,16 +117,17 @@ public class App
     	            ArrayList<Tuple2<ImmutableBytesWritable, KeyValue>> result = new ArrayList<Tuple2<ImmutableBytesWritable, KeyValue>>();
     	            
     	            result.add(new Tuple2<ImmutableBytesWritable, KeyValue>(
-    	            		new ImmutableBytesWritable(Bytes.toBytes(x._1 + HBaseSetup.HEIGHT_COL)), 
-    	                    new KeyValue(Bytes.toBytes(x._1), HBaseSetup.HEIGHT_FAMILY.getBytes(), HBaseSetup.HEIGHT_COL.getBytes(), Bytes.toBytes(x._2._1()))));
-    	            
-    	            result.add(new Tuple2<ImmutableBytesWritable, KeyValue>(
-    	            		new ImmutableBytesWritable(Bytes.toBytes(x._1 + HBaseSetup.LATITUDE_COL)),
+    	            		new ImmutableBytesWritable(Bytes.toBytes(x._1 + HBaseSetup.HEIGHT_FAMILY + 0)),
     	                    new KeyValue(Bytes.toBytes(x._1), HBaseSetup.HEIGHT_FAMILY.getBytes(), HBaseSetup.LATITUDE_COL.getBytes(), Bytes.toBytes(x._2._2()))));
     	            
     	            result.add(new Tuple2<ImmutableBytesWritable, KeyValue>(
-    	            		new ImmutableBytesWritable(Bytes.toBytes(x._1 + HBaseSetup.LONGITUDE_COL)),
+    	            		new ImmutableBytesWritable(Bytes.toBytes(x._1 + HBaseSetup.HEIGHT_FAMILY + 1)), 
+    	                    new KeyValue(Bytes.toBytes(x._1), HBaseSetup.HEIGHT_FAMILY.getBytes(), HBaseSetup.HEIGHT_COL.getBytes(), Bytes.toBytes(x._2._1()))));
+    	            
+    	            result.add(new Tuple2<ImmutableBytesWritable, KeyValue>(
+    	            		new ImmutableBytesWritable(Bytes.toBytes(x._1 + HBaseSetup.HEIGHT_FAMILY + 2)),
     	                    new KeyValue(Bytes.toBytes(x._1), HBaseSetup.HEIGHT_FAMILY.getBytes(), HBaseSetup.LONGITUDE_COL.getBytes(), Bytes.toBytes(x._2._3()))));
+    	            
     	            return result.iterator();
     	        });
     	hbasePuts.saveAsNewAPIHadoopFile("/tmp/lsannic", ImmutableBytesWritable.class, KeyValue.class, HFileOutputFormat2.class, job.getConfiguration());
@@ -138,8 +140,8 @@ public class App
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-    	
-    	
+		*/
+		PointsAggregation.aggregate(sparkConf, hbaseConf);
     	
     	
     	
