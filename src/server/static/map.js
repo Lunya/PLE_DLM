@@ -13,6 +13,12 @@ let Point = function(x, y) {
 	this.toString = () => {
 		return '{Point} x:' + this.x.toString() + ' y:' + this.y.toString();
 	};
+	this.equals = (point, delta) => {
+		if (delta)
+			return (Math.abs(this.x - point.x) <= delta) && (Math.abs(this.y - point.y) <= delta);
+		else
+			return (this.x === point.x) && (this.y === point.y);
+	};
 	this.neg = () => {
 		this.x = -this.x; this.y = -this.y; return this;
 	};
@@ -33,6 +39,18 @@ let Point = function(x, y) {
 	};
 	this.sub = (point) => {
 		this.x -= point.x; this.y -= point.y; return this;
+	};
+	this.floor = () => {
+		this.x = Math.floor(this.x); this.y = Math.floor(this.y); return this;
+	};
+	this.ceil = () => {
+		this.x = Math.ceil(this.x); this.y = Math.ceil(this.y); return this;
+	};
+	this.max = (point) => {
+		this.x = Math.max(this.x, point.x); this.y = Math.max(this.y, point.y); return this;
+	};
+	this.min = (point) => {
+		this.x = Math.min(this.x, point.x); this.y = Math.min(this.y, point.y); return this;
 	};
 };
 
@@ -120,7 +138,7 @@ let Map = function(parent) {
 				const size = image.size.clone().mulBy((180 / (2**image.zoomLevel)) / 256).mulBy(this.zoom);
 				this.ctx.drawImage(image.getImage(),
 					position.x, position.y,
-					size.x, size.y);
+					size.x+0.7, size.y+0.7);
 		}.bind(this));
 		// draw images from level 0 to level max
 		/*for (let i = 0; i < this.images.length; ++i) {
@@ -146,36 +164,39 @@ let Map = function(parent) {
 	this.getData = function() {
 		const boundaries = this.getBoundary();
 		// get image position to query
-		ajax({
-			url: '/hbase/stats', method: 'POST', type: 'arraybuffer',
-			data: {
-				lngMin: boundaries[0].x,
-				latMin: boundaries[0].y,
-				lngMax: boundaries[1].x,
-				latMax: boundaries[1].y,
-				zoom: boundaries[2]}
-		}).then(function(data) {
-			// query these images and add them to the list
-			for (let i = 0; i < data.length; ++i) {
-				const imgData = data[i];
-				ajax({
-					url: '/hbase/heights', method: 'POST', type: 'arraybuffer',
-					data: {
-						position: imgData.position,
-						zoom: imgData.zoom
+		const angleStep = 180.0 / (2.0**boundaries[2]);
+		const minPos = boundaries[0].clone().divBy(angleStep).floor().mulBy(angleStep).max(new Point(-180, -90));
+		const maxPos = boundaries[1].clone().divBy(angleStep).ceil().mulBy(angleStep).min(new Point(180, 90));
+
+		if (this.nbAjaxRequests === 0) {
+			for (let lat = minPos.y; lat < maxPos.y /*OR <=*/; lat += angleStep) {
+				for (let lng = minPos.x; lng < maxPos.x /*OR <=*/; lng += angleStep) {
+					const region = new Point(lng, lat);
+					if (this.images.filter(i => i.zoomLevel === boundaries[2]).findIndex(i => i.position.equals(region, 0.0002)) === -1) {
+						++this.nbAjaxRequests;
+						ajax({
+							url: '/hbase/heights', method: 'POST', type: 'arraybuffer',
+							data: {
+								lng: region.x,
+								lat: region.y,
+								zoom: boundaries[2]
+							}
+						}).then(function (data) {
+							let image = new MapImage(
+								new Uint16Array(data), new Point(256, 256),
+								region, boundaries[2]);
+							image.buildImage(this.gradient);
+							this.images.push(image);
+							this.images = this.images
+								.sort((a, b) => a._lastAccess < b._lastAccess)
+								.slice(0, this.maxImages);
+							if (--this.nbAjaxRequests === 0)
+								this.update();
+						}.bind(this));
 					}
-				}).then(function(data) {
-					let image = new MapImage(
-						new Uint16Array(data), new Point(256, 256),
-						new Point(imgData.lng, imgData.lat), boundaries[2]);
-					image.buildImage(this.gradient);
-					this.images.push(image);
-					this.images = this.images
-						.sort((a, b) => a._lastAccess < b._lastAccess)
-						.slice(0, this.maxImages);
-				}.bind(this));
+				}
 			}
-		}.bind(this));
+		}
 	};
 
 	// public functions
@@ -210,9 +231,10 @@ let Map = function(parent) {
 	this.parent.appendChild(this.canvas);
 
 	this.images = [];
-	this.maxImages = 100;
+	this.maxImages = 200;
 	this.gradient = new ColorGradient();
 	this.gradient.createGPS();
+	this.nbAjaxRequests = 0;
 
 	this.lastZoom = this.zoom = 1.0; // zoom = pixel * degree
 	this.minZoom = 0.5;
@@ -234,6 +256,7 @@ let Map = function(parent) {
 		this.mousePos.y = e.clientY - e.target.offsetTop;
 		if (e.buttons === 1) {
 			this.mapPosition.add(this.mousePos).sub(this.lastMousePos);
+			this.getData();
 		}
 		this.update();
 	}.bind(this));
@@ -251,5 +274,6 @@ let Map = function(parent) {
 		const offset = currMapSize.sub(lastMapSize).mul(fraction);
 		this.mapPosition.add(offset);
 		this.update();
+		this.getData();
 	}.bind(this));
 };
