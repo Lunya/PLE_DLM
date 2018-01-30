@@ -9,6 +9,7 @@ import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 
 public class HBaseSetup {
+	public static final String TABLE_BASENAME = "DLM";
 	public static final String HEIGHT_FAMILY = "h";
 	public static final String INTERESTING_POINT_FAMILY = "p";
 	

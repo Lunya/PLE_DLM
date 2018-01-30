@@ -47,6 +47,7 @@ public class App
     	} catch (Exception e) {
     		e.printStackTrace();
     	}
+    	/*
     	JavaSparkContext jsc = new JavaSparkContext(sparkConf);
     	
     	Connection hbaseConn = null;
@@ -139,6 +140,8 @@ public class App
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		*/
+		PointsAggregation.aggregate(sparkConf, hbaseConf);
     	
     	
     	
