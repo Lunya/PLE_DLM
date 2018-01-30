@@ -40,6 +40,9 @@ public class App
     	Configuration hbaseConf = null;
     	try {
 	    	hbaseConf = HBaseConfiguration.create();
+	    	System.out.println(hbaseConf.get("hbase.mapreduce.bulkload.max.hfiles.perRegion.perFamily"));
+	    	hbaseConf.set("hbase.mapreduce.bulkload.max.hfiles.perRegion.perFamily", "2048");
+	    	System.out.println(hbaseConf.get("hbase.hstore.blockingStoreFiles"));
 	    	hbaseConf.set("hbase.zookeeper.quorum", "beetlejuice");
 	    	//hbaseConf.set(Constants.HBASE_CONFIGURATION_ZOOKEEPER_QUORUM, "localhost");
 	    	HBaseAdmin.checkHBaseAvailable(hbaseConf);
@@ -141,9 +144,7 @@ public class App
 			e.printStackTrace();
 		}
 		*/
-		PointsAggregation.aggregate(sparkConf, hbaseConf);
-    	
-    	
+		HeightPointsAggregationBis.aggregate(sparkConf, hbaseConf);
     	
         /*PointsToHBase pthb = new PointsToHBase(
         		sparkConf, hbaseConf,
