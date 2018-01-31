@@ -203,18 +203,19 @@ app.post('/hbase/stats', (req, res) => {
 	res.status(200).end([{ position: '', zoom: 0, lat: 0.0, lng: 0.0 }]);
 });
 app.post('/hbase/heights', (req, res) => {
-	const hash = geohash.encode(req.body.lat, req.body.lng, 8);
+	const hash = geohash.encode(req.body.lat + Number.EPSILON, req.body.lng + Number.EPSILON, 8);
 	let get = new hbase.Get(hash);
+	console.log('lat: ', req.body.lat, '  lng: ', req.body.lng, '  hash: ', hash, '  zoom: ', req.body.zoom.toString());
 	get.addColumn('h', req.body.zoom.toString());
-	/*const imageSize = 256;
+	const imageSize = 256;
 	let imgArray = new Uint16Array(imageSize * imageSize);
 	for (let y = 0; y < imageSize; y++)
 		for (let x = 0; x < imageSize; x++)
 			imgArray[y * imageSize + x] = y * imageSize + x;
-	res.status(200).end(new Buffer(imgArray.buffer), 'binary');*/
-	client.get('dlm', get, (error, result) => {
+	res.status(200).end(new Buffer(imgArray.buffer), 'binary');
+	/*client.get('dlm', get, (error, result) => {
 		res.status(200).end(result.cols['h:' + req.body.zoom.toString()].value, 'binary');
-	});
+	});*/
 });
 
 app.post('/image', (req, res) => {
