@@ -3,7 +3,7 @@
   <groupId>bigdata</groupId>
   <artifactId>TPSpark</artifactId>
   <version>0.0.1</version>
-  <name>TPSpark</name>
+  <name>FilesJoint</name>
   
   <dependencies>
     <dependency>
@@ -70,7 +70,7 @@
           <target>1.8</target>
   	  <archive>
   	    <manifest>
-  	      <mainClass>bigdata.SparkConnectHBase</mainClass>
+  	      <mainClass>bigdata.App</mainClass>
   	    </manifest>
   	  </archive>
   	</configuration>
