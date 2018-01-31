@@ -35,7 +35,7 @@ import scala.Tuple2;
 import scala.Tuple3;
 
 public class HeightPointsAggregationTer {
-
+	/*
 	//private static final String dem3Path = "/user/lsannic/dem3_lat_lng.med.txt";
 	private static final String dem3Path = "/raw_data/dem3_raw";
 
@@ -45,10 +45,11 @@ public class HeightPointsAggregationTer {
 		JavaSparkContext context = new JavaSparkContext(conf);
 
 		JavaPairRDD<String, PortableDataStream> dem3_files = context.binaryFiles(dem3Path);
-
+		*/
 		/*
 		 * Read binary files to pair of lat;long coordinates and height value
 		 */
+		/*
 		final double angleStep = 180.0 / Math.pow(2, maxZoomLevel);
 		JavaPairRDD<Tuple2<Double, Double>, Short> points = dem3_files.flatMapToPair((file) -> {
 			final int srtm_ver = 1201;
@@ -83,10 +84,11 @@ public class HeightPointsAggregationTer {
 			}
 			return result.iterator();
 		});
-		
+		*/
 		/*
 		 * Convert points to pixels
 		 */
+		/*
 		JavaPairRDD<Tuple2<Double, Double>, byte[]> images = points.groupByKey().mapToPair((region) -> {
 			final int imageSize = 256;
 			final double latitude = region._1()._1();
@@ -97,7 +99,7 @@ public class HeightPointsAggregationTer {
 			}
 			return new Tuple2<Tuple2<Double, Double>, byte[]>(region._1(), res);
 		});
-		JavaPairRDD<Tuple2<Double, Double>, byte[]> images = points.flatMapValues((pts) -> {
+		JavaPairRDD<Tuple2<Double, Double>, byte[]> images1 = points.flatMapValues((pts) -> {
 			final int imageSize = 256;
 			//ByteBuffer res = ByteBuffer.allocateDirect(2 * imageSize * imageSize);
 			byte res[] = new byte[2 * imageSize * imageSize];
@@ -114,9 +116,6 @@ public class HeightPointsAggregationTer {
 			return res;
 		});
 		
-		/*
-		 * Aggregate points in regions
-		 */
 		Function<Iterable<Short>, Short> mapMap = (pts) -> {
 			long mean = 0;
 			int count = 0;
@@ -161,7 +160,7 @@ public class HeightPointsAggregationTer {
 		});
 		
 		JavaPairRDD<String, Iterable<Tuple3<Double, Double, Short>>> aggregatedPoints = geohashPoints.groupByKey();
-
+		*/
 		/*
 		//Done : Obtenir les points à partir de ces lignes
 		//Clé : NULL
@@ -368,7 +367,7 @@ public class HeightPointsAggregationTer {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		 */
+		 
 	}
 	
 	private static void saveRDDToDatabase(JavaPairRDD<Tuple2<Double, Double>, byte[]> rdd, byte zoomLevel) {
@@ -400,4 +399,5 @@ public class HeightPointsAggregationTer {
 			e.printStackTrace();
 		}
 	}
+	*/
 }
