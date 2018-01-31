@@ -145,6 +145,7 @@ public class App
 		}
 		*/
 		HeightPointsAggregationBis.aggregate(sparkConf, hbaseConf);
+    	//HeightPointsAggregationTer.aggregate(sparkConf, hbaseConf, 3);
     	
         /*PointsToHBase pthb = new PointsToHBase(
         		sparkConf, hbaseConf,
