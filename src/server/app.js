@@ -213,7 +213,7 @@ app.post('/hbase/heights', (req, res) => {
 			imgArray[y * imageSize + x] = y * imageSize + x;
 	res.status(200).end(new Buffer(imgArray.buffer), 'binary');*/
 	client.get('dlm', get, (error, result) => {
-		//res.status(200).end(result.cols['h:' + req.body.zoom.toString()].value, 'binary');
+		res.status(200).end(result.cols['h:' + req.body.zoom.toString()].value, 'binary');
 	});
 });
 

@@ -1,6 +1,8 @@
 package ple_dlm.batch_layer;
 
+import java.io.DataInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -23,6 +25,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.input.PortableDataStream;
 
 import com.github.davidmoten.geo.GeoHash;
 
@@ -32,7 +35,8 @@ import scala.Tuple3;
 public class HeightPointsAggregationBis {
 
 	//private static final String dem3Path = "/user/lsannic/dem3_lat_lng.med.txt";
-	private static final String dem3Path = "/raw_data/dem3_lat_lng.txt";
+	//private static final String dem3Path = "/raw_data/dem3_lat_lng.txt";
+	private static final String dem3Path = "/raw_data/dem3_raw";
 
 
 	public static void aggregate(SparkConf conf, Configuration hbaseConf) {
@@ -42,7 +46,7 @@ public class HeightPointsAggregationBis {
 		//Done : Lire le fichier texte de 220 GO
 		//Clé : NULL
 		//Valeur : Ligne du fichier
-		JavaRDD<String> rddDEM3File;
+		/*JavaRDD<String> rddDEM3File;
 		rddDEM3File = context.textFile(dem3Path);
 
 		//Done : Obtenir les points à partir de ces lignes
@@ -73,9 +77,50 @@ public class HeightPointsAggregationBis {
 				return false;
 			else
 				return true;
+		});*/
+		
+		JavaPairRDD<String, PortableDataStream> dem3_files = context.binaryFiles(dem3Path);
+
+		/*
+		 * Read binary files to pair of lat;long coordinates and height value
+		 */
+		JavaPairRDD<Tuple2<Double, Double>, Short> points = dem3_files.sample(false, 0.02).flatMapToPair((file) -> {
+			final int srtm_ver = 1201;
+			final double latStep = 1.0 / (double)srtm_ver;
+			final double lngStep = .001 / (double)srtm_ver;
+			String filename = file._1();
+			String filen = filename.substring(filename.length() - 11);
+			ByteBuffer buffer = ByteBuffer.wrap(file._2().toArray());//DataInputStream stream = file._2().open();
+			ArrayList<Tuple2<Tuple2<Double, Double>, Short>> result = new ArrayList<>();
+			
+			double lat = Double.parseDouble(filen.substring(1, 3));
+			double lng = Double.parseDouble(filen.substring(4, 7));
+			if (filen.charAt(0) == 'S' || filen.charAt(0) == 's') lat *= -1;
+			if (filen.charAt(0) == 'W' || filen.charAt(0) == 'w') lng *= -1;
+			
+			for (int i = 0; i < srtm_ver; ++i ) {
+				for (int j = 0; j < srtm_ver; ++j ) {
+					//final short height = stream.readShort();
+					final short height = buffer.getShort();
+					if (height > 0) {
+						// compute latitude and longitude
+						double latitude = lat + ((double)i * latStep);
+						double longitude = lng + ((double)j * lngStep);
+						
+						result.add(new Tuple2<Tuple2<Double, Double>, Short>(
+							new Tuple2<Double, Double>(latitude, longitude), height));
+					}
+				}
+			}
+			return result.iterator();
 		});
 
-		rddDEM3Filtered = rddDEM3Filtered.cache();
+		JavaRDD<Tuple3<Double, Double, Integer> > rddDEM3Filtered = points.map((point) -> {
+			return new Tuple3<Double, Double, Integer>(
+					point._1()._1(),
+					point._1()._2(),
+					(int)point._2());
+		}).cache();
 
 		String tableName = HBaseSetup.TABLE_BASENAME;
 

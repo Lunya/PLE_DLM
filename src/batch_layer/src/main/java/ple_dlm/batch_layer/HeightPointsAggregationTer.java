@@ -1,5 +1,6 @@
 package ple_dlm.batch_layer;
 
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -55,7 +56,7 @@ public class HeightPointsAggregationTer {
 			final double lngStep = .001 / (double)srtm_ver;
 			String filename = file._1();
 			String filen = filename.substring(filename.length() - 11);
-			ByteBuffer buffer = ByteBuffer.wrap(file._2().toArray());
+			DataInputStream stream = file._2().open();//ByteBuffer buffer = ByteBuffer.wrap(file._2().toArray());
 			ArrayList<Tuple2<Tuple2<Double, Double>, Short>> result = new ArrayList<>();
 			
 			double lat = Double.parseDouble(filen.substring(1, 3));
@@ -65,16 +66,19 @@ public class HeightPointsAggregationTer {
 			
 			for (int i = 0; i < srtm_ver; ++i ) {
 				for (int j = 0; j < srtm_ver; ++j ) {
-					// compute latitude and longitude
-					double latitude = lat + ((double)i * latStep);
-					double longitude = lng + ((double)j * lngStep);
-					
-					// get real latitude and longitude according to zoom level
-					latitude = Math.floor(latitude/angleStep) * angleStep;
-					longitude = Math.floor(longitude/angleStep) * angleStep;
-					
-					result.add(new Tuple2<Tuple2<Double, Double>, Short>(
-							new Tuple2<Double, Double>(latitude, longitude), buffer.getShort()));
+					final short height = stream.readShort();
+					if (height > 0) {
+						// compute latitude and longitude
+						double latitude = lat + ((double)i * latStep);
+						double longitude = lng + ((double)j * lngStep);
+						
+						// get real latitude and longitude according to zoom level
+						latitude = Math.floor(latitude/angleStep) * angleStep;
+						longitude = Math.floor(longitude/angleStep) * angleStep;
+						
+						result.add(new Tuple2<Tuple2<Double, Double>, Short>(
+								new Tuple2<Double, Double>(latitude, longitude), height));
+					}
 				}
 			}
 			return result.iterator();
