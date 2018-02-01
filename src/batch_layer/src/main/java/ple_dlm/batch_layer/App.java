@@ -144,7 +144,8 @@ public class App
 			e.printStackTrace();
 		}
 		*/
-		HeightPointsAggregationBis.aggregate(sparkConf, hbaseConf);
+		//HeightPointsAggregationBis.aggregate(sparkConf, hbaseConf);
+    	CitiesToHBase.insert(sparkConf, hbaseConf, "/raw_data/worldcitiespop.txt", "/raw_data/region_codes.csv");
     	//HeightPointsAggregationTer.aggregate(sparkConf, hbaseConf, 3);
     	
         /*PointsToHBase pthb = new PointsToHBase(
